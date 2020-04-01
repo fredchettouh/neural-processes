@@ -1,5 +1,10 @@
 #system files
 .DS_Store
+*checkpoint.ipynb
+*.ipynb_checkpoints
 
 #dependencies
 /tfm
+
+#notes
+/notes
