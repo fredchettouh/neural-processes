@@ -2,6 +2,8 @@
 .DS_Store
 *checkpoint.ipynb
 *.ipynb_checkpoints
+.idea/
+code/__pycache__/
 
 #dependencies
 /tfm
