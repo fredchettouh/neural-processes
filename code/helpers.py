@@ -13,3 +13,6 @@ class Helper():
 		if stack:
 			return torch.stack([array for array in list_of_arrays])
 		else: [array for array in list_of_arrays]
+
+	@staticmethod
+	def shape_select(idx):
