@@ -1,5 +1,6 @@
 import torch
 from torch import nn
+import numpy as np
 
 
 class Encoder(nn.Module):
@@ -122,7 +123,7 @@ class Decoder(nn.Module):
 
     def forward(self, x_values, r_values):
         """Takes x and r values, combines them and passes them twice to MLP.
-        Thus we have one run for mu and one run for sigma"""
+        Thus we have one run for mu and one run for sigma"""    
 
         input_as_pairs = torch.cat((x_values, r_values), dim=1)
 

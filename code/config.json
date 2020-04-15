@@ -1,0 +1,28 @@
+{"default":
+    {
+        "train_params": {
+            "n_epochs":10,
+	        "lr":0.001,
+            "max_funcs":8,
+            "max_contx":5,
+            "min_contx":2,
+            "dim_observation":500,
+            "dimx":1,
+            "dimy":1,
+            "dimr":128,
+            "dimout":2,
+            "dim_encoder":[128,128,128],
+            "dim_decoder":[128,128],
+            "train_on_gpu":false,
+            "print_after": 10
+        },
+        "data_gen_params": {
+            "xdim":1,
+            "ydim":1,
+            "num_instances":2000,
+            "range_x":[-2,2],
+            "steps":500
+        },
+        "train_share": 0.9
+    }
+}
