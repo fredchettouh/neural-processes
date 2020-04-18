@@ -28,5 +28,6 @@ class Helper():
         Next it pads the diagonal with zeroes to create a covariance matrix for sampling.
        """
         transformed_variance = 0.1 + 0.9 * softplus(var_tensor)
-        cov_matrix = torch.diag_embed(transformed_variance)
-        return cov_matrix
+        # cov_matrix = torch.diag_embed(transformed_variance)
+        # return cov_matrix
+        return transformed_variance

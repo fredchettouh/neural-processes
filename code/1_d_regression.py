@@ -1,5 +1,5 @@
 # custom imports
-from trainer import Trainer
+from experiment import Experiment
 from datageneration import DataGenerator
 from helpers import Helper
 # torch imports
@@ -29,7 +29,7 @@ trainloader = data.DataLoader(traindata, batch_size=10)
 validata = data.TensorDataset(x_values[train_len:], func_x[train_len:])
 valiloader = data.DataLoader(validata, batch_size=1)
 
-trainer = Trainer(**conf['default']['train_params'])
+trainer = Experiment(**conf['default']['experiment_params'])
 
 model_weights = trainer.run_training(trainloader,valiloader)
 
