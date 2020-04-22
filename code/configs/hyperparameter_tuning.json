@@ -1,0 +1,19 @@
+{
+  "one_d_regression": [
+    {"name": "n_epochs","type": "fixed", "value": 5},
+    {"name": "lr", "type": "fixed", "value": 0.001},
+    {"name": "min_funcs", "type": "fixed" , "value": 2},
+    {"name": "max_funcs", "type": "fixed" , "value": 10},
+    {"name": "max_contx", "type": "fixed", "value": 10},
+    {"name": "min_contx", "type": "fixed" , "value": 3},
+    {"name": "dimx", "type": "fixed", "value":  400},
+    {"name":  "dimout", "type": "fixed", "value": 1},
+    {"name": "dimy", "type": "fixed" , "value": 1},
+    {"name": "train_on_gpu", "type": "fixed", "value": 128},
+    {"name": "print_after", "type": "fixed", "value": 2},
+    {"name": "dim_encoder", "type": "choice", "values":[128,128,128]},
+    {"name": "dim_decoder", "type": "choice", "value": [128,128]},
+    {"name": "train_on_gpu", "type": "fixed", "value": false},
+    {"name": "print_after", "type": "fixed", "value": 5000}
+  ]
+}

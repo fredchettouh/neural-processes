@@ -12,3 +12,6 @@ code/ ../.python-version
 
 #notes
 /notes
+
+#local requirements that can be used to run Jupiter notebooks 
+local_requirements.txt

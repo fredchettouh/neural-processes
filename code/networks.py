@@ -127,5 +127,4 @@ class Decoder(nn.Module):
 
         input_as_pairs = torch.cat((x_values, r_values), dim=1)
 
-        dist_params = self._process_input(input_as_pairs)
         return self._process_input(input_as_pairs)

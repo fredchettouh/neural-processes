@@ -1,8 +1,9 @@
 import torch
 from torch.nn.functional import softplus
+import numpy as np
+import matplotlib.pyplot as plt
 
-
-class Helper():
+class Helper:
 
     def __init__(self):
         pass
@@ -28,6 +29,29 @@ class Helper():
         Next it pads the diagonal with zeroes to create a covariance matrix for sampling.
        """
         transformed_variance = 0.1 + 0.9 * softplus(var_tensor)
-        # cov_matrix = torch.diag_embed(transformed_variance)
-        # return cov_matrix
+
         return transformed_variance
+
+class Plotter:
+
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def plot_training_progress(training_losses, vali_losses, interval=1):
+
+        title = "Development of training and validation loss"
+        xlabel = "Epoch"
+        ylabel = "Negative log probabability "
+        xvalues = np.arange(0, len(training_losses), interval)
+        plt.plot(xvalues, training_losses[::interval], label='training loss')
+        plt.plot(xvalues, vali_losses, label='validation loss')
+        plt.title(title)
+        plt.xlabel(xlabel)
+        plt.ylabel(ylabel)
+        plt.legend()
+        plt.show()
+        plt.close()
+        return
+
+
