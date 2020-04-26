@@ -55,3 +55,10 @@ class Plotter:
         return
 
 
+class HyperParam:
+
+    def train_evaluate(parameterization):
+        trainer = Experiment(**parameterization)
+        weights = trainer.run_training(trainloader)
+        evaluation = trainer.run_test(weights, valiloader)
+        return evaluation

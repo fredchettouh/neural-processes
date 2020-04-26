@@ -73,7 +73,7 @@ class Experiment(nn.Module):
     """
 
     def __init__(self,
-                 n_epochs=20000,
+                 n_epochs=2000,
                  lr=0.001,
                  min_funcs=2,
                  max_funcs=10,
@@ -89,7 +89,7 @@ class Experiment(nn.Module):
                  num_layers_decoder=2,
                  num_neurons_decoder=128,
                  train_on_gpu=False,
-                 print_after=100):
+                 print_after=2000):
         super().__init__()
 
         self._n_epochs = n_epochs
@@ -108,6 +108,8 @@ class Experiment(nn.Module):
         if self._train_on_gpu:
             self._encoder.cuda()
             self._decoder.cuda()
+
+
 
     def _get_sample_indexes(self, both=True):
 
@@ -240,6 +242,7 @@ class Experiment(nn.Module):
                 mean_vali_loss = running_vali_loss / len(valiloader)
                 print(f' Validation loss after {current_epoch} equals {mean_vali_loss}')
                 if plotting:
+                    print(plotting)
                     self.plot_run(batch_size, contxt_idx, xvalues, funcvalues, target_y, target_x, mu,
                                   sigma_transformed)
             return mean_vali_loss
@@ -288,14 +291,15 @@ class Experiment(nn.Module):
                 if epoch % self._print_after == 0:
                     print(f'Mean loss at epoch {epoch} : {mean_epoch_loss[-1]}')
                     if valiloader:
+                        print(plotting)
                         mean_vali_loss.append(self._validation_run(valiloader, epoch, plotting))
                         self._encoder.train(), self._decoder.train()
         if plotting:
-            Plotter.plot_training_progress(mean_epoch_loss,mean_vali_loss, interval=self._print_after)
+            Plotter.plot_training_progress(mean_epoch_loss, mean_vali_loss, interval=self._print_after)
 
         return self._decoder.state_dict()
 
-    def run_test(self, state_dict, testloader):
+    def run_test(self, state_dict, testloader, plotting=False):
 
         """This function performs one test run
                 Parameters
@@ -323,9 +327,11 @@ class Experiment(nn.Module):
                     xvalues, funcvalues, training=False)
                 mse = ((mu - target_y) ** 2).mean(1).mean(0)
                 running_mse += mse.item()
-
-                self.plot_run(batch_size, contxt_idx, xvalues, funcvalues, target_y, target_x, mu, sigma_transformed)
+                if plotting:
+                    self.plot_run(batch_size, contxt_idx, xvalues, funcvalues, target_y, target_x, mu, sigma_transformed)
 
             else:
                 test_set_mse = running_mse / len(testloader)
                 return test_set_mse
+
+
