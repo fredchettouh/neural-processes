@@ -56,12 +56,12 @@ class Experiment(nn.Module):
         Dimensionality of the ouput of the decoder, e.g. batch_size,1,2 for the one d regression case
 
 
-    dim_encoder: tuple
-        Dimensions of the hidden layers
+    num_layers : int
+        Dimension of hidden layers
 
+    num_neurons: int
 
-    dim_decoder: tuple
-        Dimensions of the hidden layers
+        Number of Neurons for each hidden layer
 
     train_on_gpu: boolean
 
@@ -84,8 +84,10 @@ class Experiment(nn.Module):
                  dimy=1,
                  dimr=50,
                  dimout=2,
-                 dim_encoder=[128, 128, 128],
-                 dim_decoder=[128, 128, 128],
+                 num_layers_encoder=3,
+                 num_neurons_encoder=128,
+                 num_layers_decoder=2,
+                 num_neurons_decoder=128,
                  train_on_gpu=False,
                  print_after=100):
         super().__init__()
@@ -97,17 +99,11 @@ class Experiment(nn.Module):
         self._max_contx = max_contx
         self._min_contx = min_contx
         self._dim_observation = dim_observation
-        self._dimx = dimx
-        self._dimy = dimy
-        self._dimr = dimr
-        self._dimout = dimout
-        self._dim_encoder = dim_encoder
-        self._dim_decoder = dim_decoder
         self._train_on_gpu = train_on_gpu
         self._print_after = print_after
 
-        self._encoder = Encoder(self._dimx, self._dimy, self._dimr, self._dim_encoder)
-        self._decoder = Decoder(self._dimx, self._dim_encoder[-1], self._dimout, self._dim_decoder)
+        self._encoder = Encoder(dimx, dimy, dimr, num_layers_encoder, num_neurons_encoder)
+        self._decoder = Decoder(dimx, num_neurons_encoder, dimout, num_layers_decoder, num_neurons_decoder)
 
         if self._train_on_gpu:
             self._encoder.cuda()

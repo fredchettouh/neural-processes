@@ -25,27 +25,31 @@ class Encoder(nn.Module):
     dimr : int
         Dimension of output representation
 
-    dimh : tuple
+    num_layers : int
         Dimension of hidden layers
+
+    num_neurons: int
+
+        Number of Neurons for each hidden layer
 
     """
 
-    def __init__(self, dimx, dimy, dimr, dimh):
+    def __init__(self, dimx, dimy, dimr, num_layers, num_neurons):
         super().__init__()
 
         self._dimx = dimx
         self._dimy = dimy
         self._dimr = dimr
-        self._dimh = dimh
+        self._hidden_layers = [num_neurons for _ in range(num_layers)]
 
-        _first_layer = [nn.Linear(self._dimx + self._dimy, self._dimh[0]), nn.ReLU()]
+        _first_layer = [nn.Linear(self._dimx + self._dimy, self._hidden_layers[0]), nn.ReLU()]
 
         _hidden_layers = list(np.array([
-            [nn.Linear(self._dimh[i], self._dimh[i + 1]), nn.ReLU()]
-            for i in range(len(self._dimh) - 2)
+            [nn.Linear(self._hidden_layers[_], self._hidden_layers[_ + 1]), nn.ReLU()]
+            for _ in range(len(self._hidden_layers) - 2)
         ]).flatten())
 
-        _last_layer = [nn.Linear(self._dimh[-2], self._dimh[-1])]
+        _last_layer = [nn.Linear(self._hidden_layers[-2], self._hidden_layers[-1])]
 
         self._layers = _first_layer + _hidden_layers + _last_layer
 
@@ -95,27 +99,31 @@ class Decoder(nn.Module):
     dimr : int
         Dimension of each of the representations
 
-    *args : tuple
-        Dimensions of the hidden layers
+    num_layers : int
+        Dimension of hidden layers
+
+    num_neurons: int
+
+        Number of Neurons for each hidden layer
 
     """
 
-    def __init__(self, dimx, dimr, dimparam, dimh):
+    def __init__(self, dimx, dimr, dimparam, num_layers, num_neurons):
         super().__init__()
 
         self._dimx = dimx
         self._dimr = dimr
         self._dimparam = dimparam
-        self._dimh = dimh
+        self._hidden_layers = [num_neurons for _ in range(num_layers)]
 
-        _first_layer = [nn.Linear(self._dimx + self._dimr, self._dimh[0]), nn.ReLU()]
+        _first_layer = [nn.Linear(self._dimx + self._dimr, self._hidden_layers[0]), nn.ReLU()]
 
         _hidden_layers = list(np.array([
-            [nn.Linear(self._dimh[i], self._dimh[i + 1]), nn.ReLU()]
-            for i in range(len(self._dimh) - 1)
+            [nn.Linear(self._hidden_layers[_], self._hidden_layers[_ + 1]), nn.ReLU()]
+            for _ in range(len(self._hidden_layers) - 1)
         ]).flatten())
 
-        _last_layer = [nn.Linear(self._dimh[-1], self._dimparam)]
+        _last_layer = [nn.Linear(self._hidden_layers[-1], self._dimparam)]
 
         self._layers = _first_layer + _hidden_layers + _last_layer
 
