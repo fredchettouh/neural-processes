@@ -1,6 +1,6 @@
 {
   "one_d_regression": {
-    "parametersgit stt_to_tune": [
+     "parameters_to_tune": [
       {
         "name": "n_epochs",
         "type": "fixed",
