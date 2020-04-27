@@ -46,5 +46,5 @@ class HyperParam:
             evaluation_function=partial_func,
             objective_name='MSE',
             random_seed=self._random_seed,
-            total_trials=self.total_trials
+            total_trials=self.total_trials,
         )

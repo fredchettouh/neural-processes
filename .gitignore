@@ -15,3 +15,9 @@ code/ ../.python-version
 
 #local requirements that can be used to run Jupiter notebooks 
 local_requirements.txt
+
+#private key
+tfm_1.pem
+
+#scratch_work
+code/Untitled.ipynb

@@ -2,15 +2,29 @@ import torch
 from torch.nn.functional import softplus
 import numpy as np
 import matplotlib.pyplot as plt
+from torch.utils import data
+
 
 class Helper:
 
     def __init__(self):
         pass
 
+
+
     @staticmethod
     def scale_shift_uniform(a=0, b=1, *size):
         return torch.rand(size=(size)) * (a - b) + b
+
+    @staticmethod
+    def create_loader(datagenerator_instance, num_instances, noise, length_scale, gamma, batch_size):
+        x_values, func_x = datagenerator_instance.generate_curves(num_instances, noise, length_scale, gamma)
+        func_x = Helper.list_np_to_sensor(func_x)
+        x_values = x_values.repeat(func_x.shape[0], 1, 1)
+        dataset = data.TensorDataset(x_values, func_x)
+        dataloader = data.DataLoader(dataset, batch_size=batch_size)
+        return dataloader
+
 
     @staticmethod
     def list_np_to_sensor(list_of_arrays, stack=True):

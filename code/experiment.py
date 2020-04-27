@@ -4,6 +4,7 @@ from torch import nn
 from torch import optim
 # from torch.distributions.multivariate_normal import MultivariateNormal
 from torch.distributions.normal import Normal
+from torch.utils import data
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -12,10 +13,11 @@ from tqdm import tqdm
 
 from networks import Encoder, Decoder
 from helpers import Helper, Plotter
+from datageneration import DataGenerator
+
 
 
 class Experiment(nn.Module):
-
     """
     This class orchestrates the training, validation and test of the CNP
 
@@ -55,7 +57,6 @@ class Experiment(nn.Module):
     dimout: int
         Dimensionality of the ouput of the decoder, e.g. batch_size,1,2 for the one d regression case
 
-
     num_layers : int
         Dimension of hidden layers
 
@@ -69,6 +70,12 @@ class Experiment(nn.Module):
 
     print_after: int
         Indication of the we want to have a validation run
+
+    generatedata: boolean, optional
+        If True, data will be generated using the Datagenerator
+
+    datagen_params: Dict, optional
+        Contains the parameters for data generation
 
     """
 
@@ -89,7 +96,10 @@ class Experiment(nn.Module):
                  num_layers_decoder=2,
                  num_neurons_decoder=128,
                  train_on_gpu=False,
-                 print_after=2000):
+                 print_after=2000,
+                 generatedata=False,
+                 range_x=None):
+
         super().__init__()
 
         self._n_epochs = n_epochs
@@ -101,6 +111,7 @@ class Experiment(nn.Module):
         self._dim_observation = dim_observation
         self._train_on_gpu = train_on_gpu
         self._print_after = print_after
+        self._generatedata = generatedata
 
         self._encoder = Encoder(dimx, dimy, dimr, num_layers_encoder, num_neurons_encoder)
         self._decoder = Decoder(dimx, num_neurons_encoder, dimout, num_layers_decoder, num_neurons_decoder)
@@ -109,7 +120,8 @@ class Experiment(nn.Module):
             self._encoder.cuda()
             self._decoder.cuda()
 
-
+        if self._generatedata:
+            self._datagenerator = DataGenerator(xdim=dimx, ydim=dimy, range_x=range_x, steps=dim_observation)
 
     def _get_sample_indexes(self, both=True):
 
@@ -221,7 +233,7 @@ class Experiment(nn.Module):
         plt.show()
         plt.close()
 
-    def _validation_run(self, valiloader, current_epoch, plotting):
+    def _validation_run(self, current_epoch, plotting, valiloader=None):
 
         self._encoder.eval()
         self._decoder.eval()
@@ -242,24 +254,27 @@ class Experiment(nn.Module):
                 mean_vali_loss = running_vali_loss / len(valiloader)
                 print(f' Validation loss after {current_epoch} equals {mean_vali_loss}')
                 if plotting:
-                    print(plotting)
                     self.plot_run(batch_size, contxt_idx, xvalues, funcvalues, target_y, target_x, mu,
                                   sigma_transformed)
             return mean_vali_loss
 
-    def run_training(self, trainloader, valiloader=None, plotting=False):
+    def run_training(self, trainloader=None, valiloader=None, num_instances_train=None, num_instances_vali=None, noise=None,length_scale=None, gamma=None,
+                     batch_size_train=None, batch_size_vali=None, plotting=False):
 
         """This function performs one training run
         Parameters
         ----------
 
-        trainloader: torch.utils.data.DataLoader
+        trainloader: torch.utils.data.DataLoader, optional
             iterable object that holds the data in batch sizes
 
-        valiloader: torch.utils.data.DataLoader
+        valiloader: torch.utils.data.DataLoader, optional
             iterable object that holds validation data
 
-        plotting: boolean
+        plotting: boolean, optional
+            indicating if progress should be plotted
+
+        batchsize: int, optional
             indicating if progress should be plotted
         """
 
@@ -270,7 +285,10 @@ class Experiment(nn.Module):
         mean_epoch_loss = []
         mean_vali_loss = []
         for epoch in tqdm(range(self._n_epochs), total=self._n_epochs):
-            # for epoch in range(self._n_epochs):
+
+            if self._generatedata:  # generate data on the fly for every epoch
+                trainloader = Helper.create_loader(self._datagenerator, num_instances_train, noise, length_scale, gamma, batch_size_train)
+                valiloader = Helper.create_loader(self._datagenerator, num_instances_vali, noise, length_scale, gamma, batch_size_vali)
             running_loss = 0
             #         get sample indexes
             for xvalues, funcvalues in trainloader:
@@ -292,7 +310,7 @@ class Experiment(nn.Module):
                     print(f'Mean loss at epoch {epoch} : {mean_epoch_loss[-1]}')
                     if valiloader:
                         print(plotting)
-                        mean_vali_loss.append(self._validation_run(valiloader, epoch, plotting))
+                        mean_vali_loss.append(self._validation_run(epoch, plotting, valiloader))
                         self._encoder.train(), self._decoder.train()
         if plotting:
             Plotter.plot_training_progress(mean_epoch_loss, mean_vali_loss, interval=self._print_after)
@@ -328,10 +346,9 @@ class Experiment(nn.Module):
                 mse = ((mu - target_y) ** 2).mean(1).mean(0)
                 running_mse += mse.item()
                 if plotting:
-                    self.plot_run(batch_size, contxt_idx, xvalues, funcvalues, target_y, target_x, mu, sigma_transformed)
+                    self.plot_run(batch_size, contxt_idx, xvalues, funcvalues, target_y, target_x, mu,
+                                  sigma_transformed)
 
             else:
                 test_set_mse = running_mse / len(testloader)
                 return test_set_mse
-
-
