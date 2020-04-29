@@ -10,8 +10,6 @@ class Helper:
     def __init__(self):
         pass
 
-
-
     @staticmethod
     def scale_shift_uniform(a=0, b=1, *size):
         return torch.rand(size=(size)) * (a - b) + b
@@ -24,7 +22,6 @@ class Helper:
         dataset = data.TensorDataset(x_values, func_x)
         dataloader = data.DataLoader(dataset, batch_size=batch_size)
         return dataloader
-
 
     @staticmethod
     def list_np_to_sensor(list_of_arrays, stack=True):

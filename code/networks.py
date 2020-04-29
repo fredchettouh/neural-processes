@@ -3,6 +3,31 @@ from torch import nn
 import numpy as np
 
 
+def linear_layer(layer_specs, index, dropout=0):
+    """
+    Parameters
+    ----------
+    index : int
+        Indicates at which layer in the layer architecture specification the model currently is
+
+    layer_specs : list
+        Holds the specicication for all layers in the architecture
+
+    dropout : float
+        specifies the dropout probability to be used in the dropout layer
+
+    returns a list of length one with the layer of the network specified
+    """
+    linear_layer = nn.Linear(layer_specs[index], layer_specs[index + 1])
+    relu_layer = nn.ReLU()
+    dropout_layer = nn.Dropout(p=dropout)
+
+    if dropout:
+        return [linear_layer, relu_layer, dropout_layer]
+    else:
+        return [linear_layer, relu_layer]
+
+
 class Encoder(nn.Module):
     """This class maps each x_i, y_i context point to a representation r_i
     To learn this Representation we are using a Multi Layer Perceptron
@@ -34,7 +59,8 @@ class Encoder(nn.Module):
 
     """
 
-    def __init__(self, dimx, dimy, dimr, num_layers, num_neurons):
+    def __init__(self, dimx: int, dimy: int, dimr: int, num_layers: int, num_neurons: int,
+                 dropout: float = 0) -> object:
         super().__init__()
 
         self._dimx = dimx
@@ -44,14 +70,17 @@ class Encoder(nn.Module):
 
         _first_layer = [nn.Linear(self._dimx + self._dimy, self._hidden_layers[0]), nn.ReLU()]
 
-        _hidden_layers = list(np.array([
-            [nn.Linear(self._hidden_layers[_], self._hidden_layers[_ + 1]), nn.ReLU()]
-            for _ in range(len(self._hidden_layers) - 2)
-        ]).flatten())
+        # _hidden_layers = list(np.array([
+        #     [nn.Linear(self._hidden_layers[_], self._hidden_layers[_ + 1]), nn.ReLU()]
+        #     for _ in range(len(self._hidden_layers) - 2)
+        # ]).flatten())
+
+        _hidden_layers = [linear_layer(self._hidden_layers, _, dropout) for _ in range(len(self._hidden_layers) - 2)]
+        _hidden_layers_flat = [element for inner in _hidden_layers for element in inner]
 
         _last_layer = [nn.Linear(self._hidden_layers[-2], self._hidden_layers[-1])]
 
-        self._layers = _first_layer + _hidden_layers + _last_layer
+        self._layers = _first_layer + _hidden_layers_flat + _last_layer
 
         self._process_input = nn.Sequential(*self._layers)
 
@@ -108,7 +137,7 @@ class Decoder(nn.Module):
 
     """
 
-    def __init__(self, dimx, dimr, dimparam, num_layers, num_neurons):
+    def __init__(self, dimx, dimr, dimparam, num_layers, num_neurons, dropout=0):
         super().__init__()
 
         self._dimx = dimx
@@ -117,22 +146,33 @@ class Decoder(nn.Module):
         self._hidden_layers = [num_neurons for _ in range(num_layers)]
 
         _first_layer = [nn.Linear(self._dimx + self._dimr, self._hidden_layers[0]), nn.ReLU()]
+        if dropout:
+            _first_layer.append(nn.Dropout(p=dropout))
 
-        _hidden_layers = list(np.array([
-            [nn.Linear(self._hidden_layers[_], self._hidden_layers[_ + 1]), nn.ReLU()]
-            for _ in range(len(self._hidden_layers) - 1)
-        ]).flatten())
+        # _hidden_layers = list(np.array([
+        #     [nn.Linear(self._hidden_layers[_], self._hidden_layers[_ + 1]), nn.ReLU()]
+        #     for _ in range(len(self._hidden_layers) - 1)
+        # ]).flatten())
 
+        _hidden_layers = [linear_layer(self._hidden_layers, _, dropout) for _ in range(len(self._hidden_layers) - 2)]
+        _hidden_layers_flat = [element for inner in _hidden_layers for element in inner]
         _last_layer = [nn.Linear(self._hidden_layers[-1], self._dimparam)]
 
-        self._layers = _first_layer + _hidden_layers + _last_layer
+        self._layers = _first_layer + _hidden_layers_flat + _last_layer
 
         self._process_input = nn.Sequential(*self._layers)
 
     def forward(self, x_values, r_values):
         """Takes x and r values, combines them and passes them twice to MLP.
-        Thus we have one run for mu and one run for sigma"""    
+        Thus we have one run for mu and one run for sigma"""
 
         input_as_pairs = torch.cat((x_values, r_values), dim=1)
 
         return self._process_input(input_as_pairs)
+
+
+if __name__ == "__main__":
+    encoder = Encoder(dimx=1, dimy=1, dimr=128, num_layers=4, num_neurons=128, dropout=0)
+    decoder = Decoder(dimx=1, dimr=128, dimparam=2, num_layers=3, num_neurons=128, dropout=0.2)
+    print(encoder, decoder)
+

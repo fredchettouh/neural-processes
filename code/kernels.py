@@ -1,6 +1,5 @@
 import torch
 
-
 def tensor_rbf(x1, x2, l1_scale, simga_f_scale, sigma_noise, dimy=1):
     batch_size = x1.shape[0]
     num_points = x1.shape[1]

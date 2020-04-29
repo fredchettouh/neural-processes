@@ -95,6 +95,7 @@ class Experiment(nn.Module):
                  num_neurons_encoder=128,
                  num_layers_decoder=2,
                  num_neurons_decoder=128,
+                 dropout=0,
                  train_on_gpu=False,
                  print_after=2000,
                  generatedata=False,
@@ -113,8 +114,9 @@ class Experiment(nn.Module):
         self._print_after = print_after
         self._generatedata = generatedata
 
+
         self._encoder = Encoder(dimx, dimy, dimr, num_layers_encoder, num_neurons_encoder)
-        self._decoder = Decoder(dimx, num_neurons_encoder, dimout, num_layers_decoder, num_neurons_decoder)
+        self._decoder = Decoder(dimx, num_neurons_encoder, dimout, num_layers_decoder, num_neurons_decoder, dropout)
 
         if self._train_on_gpu:
             self._encoder.cuda()
