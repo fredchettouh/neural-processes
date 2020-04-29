@@ -226,7 +226,7 @@ class Experiment(nn.Module):
         x_plot = target_x[random_function, :, :].flatten().cpu()
         mu_plot = mu[random_function, :, :].flatten().cpu()
         var_plot = cov_matrix[random_function, :, :].flatten().cpu()
-        plt.scatter(x_plot, y_plot, color='red')
+        plt.plot(x_plot, y_plot, color='red')
         plt.scatter(context_x_plot, context_y_plot, color='black')
         plt.plot(x_plot, mu_plot, color='blue')
         plt.fill_between(x_plot, y1=mu_plot + var_plot, y2=mu_plot - var_plot, alpha=0.2)

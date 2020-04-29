@@ -1,4 +1,4 @@
-#system files
+s#system files
 .DS_Store
 *checkpoint.ipynb
 *.ipynb_checkpoints
@@ -21,3 +21,7 @@ tfm_1.pem
 
 #scratch_work
 code/Untitled.ipynb
+
+
+#data 
+data

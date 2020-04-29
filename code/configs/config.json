@@ -1,75 +1,109 @@
 {
-    "default":
-    {
-        "experiment_params": {
-            "n_epochs":200000,
-	        "lr":0.001,
-            "min_funcs":2,
-            "max_funcs":10,
-            "max_contx":10,
-            "min_contx":3,
-            "dim_observation":400,
-            "range_x": null,
-            "dimx":1,
-            "dimy":1,
-            "dimr":128,
-            "dimout":2,
-            "num_layers_encoder":3,
-            "num_neurons_encoder":128,
-            "num_layers_decoder":2,
-            "num_neurons_decoder":128,
-            "train_on_gpu":false,
-            "print_after": 5000,
-            "generatedata": false,
-             "range_x": [-2,2]
-        },
-        "data_gen_params": {
-            "num_instances_train": 64,
-            "num_instances_vali": 1,
-            "noise":0.0001,
-            "length_scale":0.4,
-            "gamma": 1,
-            "batch_size_train":64,
-            "batch_size_vali":1,
-            "trainloader": null
-        },
-        "train_share": 0.9,
-        "test_params": {
-            "test_share": 0.1
-        }
+  "default":
+  {
+    "experiment_params": {
+      "n_epochs":200000,
+      "lr":0.001,
+      "min_funcs":2,
+      "max_funcs":10,
+      "max_contx":10,
+      "min_contx":3,
+      "dim_observation":400,
+      "range_x": null,
+      "dimx":1,
+      "dimy":1,
+      "dimr":128,
+      "dimout":2,
+      "num_layers_encoder":3,
+      "num_neurons_encoder":128,
+      "num_layers_decoder":2,
+      "num_neurons_decoder":128,
+      "train_on_gpu":false,
+      "print_after": 5000,
+      "generatedata": false,
+      "range_x": [-2,2]
     },
-    "paper_configuration": {
-        "experiment_params": {
-            "n_epochs":200000,
-	        "lr":0.0001,
-            "min_funcs":2,
-            "max_funcs":10,
-            "max_contx":10,
-            "min_contx":3,
-            "dim_observation":400,
-            "dimx":1,
-            "dimy":1,
-            "dimr":128,
-            "dimout":2,
-            "num_layers_encoder":3,
-            "num_neurons_encoder":128,
-            "num_layers_decoder":2,
-            "num_neurons_decoder":128,
-            "train_on_gpu":false,
-            "print_after": 20000,
-            "generatedata": true,
-             "range_x": [-2,2]
-        },
-        "data_gen_params": {
-            "num_instances_train": 64,
-            "num_instances_vali": 1,
-            "noise":0.0001,
-            "length_scale":0.4,
-            "gamma": 1,
-            "batch_size_train":64,
-            "batch_size_vali":1,
-            "trainloader": null
-        }
-
+    "data_gen_params": {
+      "num_instances_train": 64,
+      "num_instances_vali": 1,
+      "noise":0.0001,
+      "length_scale":0.4,
+      "gamma": 1,
+      "batch_size_train":64,
+      "batch_size_vali":1,
+      "trainloader": null
+    },
+    "train_share": 0.9,
+    "test_params": {
+      "test_share": 0.1
     }
+    },
+  "paper_configuration": {
+    "experiment_params": {
+      "n_epochs":200000,
+      "lr":0.0001,
+      "min_funcs":2,
+      "max_funcs":10,
+      "max_contx":10,
+      "min_contx":3,
+      "dim_observation":400,
+      "dimx":1,
+      "dimy":1,
+      "dimr":128,
+      "dimout":2,
+      "num_layers_encoder":3,
+      "num_neurons_encoder":128,
+      "num_layers_decoder":2,
+      "num_neurons_decoder":128,
+      "train_on_gpu":false,
+      "print_after": 1000,
+      "generatedata": true,
+      "range_x": [-2,2]
+    },
+    "data_gen_params": {
+      "num_instances_train": 64,
+      "num_instances_vali": 1,
+      "noise":0.0004,
+      "length_scale":0.4,
+      "gamma": 1,
+      "batch_size_train":64,
+      "batch_size_vali":1,
+      "trainloader": null
+    }
+  },
+  "city_weather_configs": {
+    "experiment_params": {
+      "n_epochs":200000,
+      "lr":0.0001,
+      "min_funcs":2,
+      "max_funcs":10,
+      "max_contx":10,
+      "min_contx":3,
+      "dim_observation":396,
+        "dimx":1,
+      "dimy":1,
+      "dimr":128,
+      "dimout":2,
+      "num_layers_encoder":3,
+      "num_neurons_encoder":128,
+      "num_layers_decoder":2,
+      "num_neurons_decoder":128,
+      "train_on_gpu":false,
+      "print_after": 1000,
+      "generatedata": false,
+      "range_x": null
+    },
+    "dataset_params": {
+      "base_dir" : "/Users/frederik/Google Drive/University/UC3M/TFM/cnp_repo/neural-processes",
+      "data_dir" : "data",
+      "extension": "weather_data",
+      "data_file": "temp_1980_2010_majorcity.csv"
+      },
+    "data_gen_params": {
+      "num_instances_train": 80,
+      "num_instances_vali": 20,
+      "batch_size_train":80,
+      "batch_size_vali":20
+    }
+  }
 }
