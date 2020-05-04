@@ -51,7 +51,7 @@
       "dimy": 1,
       "dimr": 128,
       "dimout": 2,
-      "dropout": 0.2,
+      "dropout": 0,
       "num_layers_encoder": 4,
       "num_neurons_encoder": 128,
       "num_layers_decoder": 3,
