@@ -60,7 +60,7 @@ class Encoder(nn.Module):
     """
 
     def __init__(self, dimx: int, dimy: int, dimr: int, num_layers: int, num_neurons: int,
-                 dropout: float = 0) -> object:
+                 dropout: float = 0) -> None:
         super().__init__()
 
         self._dimx = dimx
@@ -75,7 +75,7 @@ class Encoder(nn.Module):
         #     for _ in range(len(self._hidden_layers) - 2)
         # ]).flatten())
 
-        _hidden_layers = [linear_layer(self._hidden_layers, _, dropout) for _ in range(len(self._hidden_layers) - 2)]
+        _hidden_layers = [linear_layer(self._hidden_layers, i, dropout) for i in range(len(self._hidden_layers) - 2)]
         _hidden_layers_flat = [element for inner in _hidden_layers for element in inner]
 
         _last_layer = [nn.Linear(self._hidden_layers[-2], self._hidden_layers[-1])]

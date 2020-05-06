@@ -20,11 +20,11 @@ class DataGenerator():
     
     xdim : int
     
-        Dimesion of each x value
+        Dimension of each x value
         
     ydim : int
     
-        Dimesion of each y value
+        Dimension of each y value
         
     range_x : tuple
     
@@ -81,8 +81,6 @@ class DataGenerator():
             func_x = cholesky_decomp @ standard_normals
             data.append(func_x)
         return x_values, data
-
-ap = argparse.ArgumentParser()
 
 
 if __name__ == '__main__':

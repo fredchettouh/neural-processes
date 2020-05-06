@@ -106,5 +106,41 @@
       "batch_size_train": 80,
       "batch_size_vali": 20
     }
+  },
+
+  "height_weight_configs": {
+    "experiment_params": {
+      "n_epochs": 200000,
+      "lr": 0.0001,
+      "min_funcs": 2,
+      "max_funcs": 10,
+      "max_contx": 10,
+      "min_contx": 3,
+      "dim_observation": 100,
+        "dimx": 1,
+      "dimy": 1,
+      "dimr": 128,
+      "dimout": 2,
+      "num_layers_encoder": 3,
+      "num_neurons_encoder": 128,
+      "num_layers_decoder": 2,
+      "num_neurons_decoder": 128,
+      "train_on_gpu": false,
+      "print_after": 1000,
+      "generatedata": false,
+      "range_x": null
+    },
+    "dataset_params": {
+      "base_dir" : "/Users/frederik/Google Drive/University/UC3M/TFM/cnp_repo/neural-processes",
+      "data_dir" : "data",
+      "extension": "weight_data",
+      "data_file": "weight-height.csv"
+      },
+    "data_gen_params": {
+      "num_instances_train": 80,
+      "num_instances_vali": 20,
+      "batch_size_train": 80,
+      "batch_size_vali": 20
+    }
   }
 }

@@ -1,4 +1,3 @@
-Ls
 jupyter==1.0.0
 torch==1.4.0
 matplotlib==3.2.1

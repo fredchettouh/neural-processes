@@ -16,7 +16,6 @@ from helpers import Helper, Plotter
 from datageneration import DataGenerator
 
 
-
 class Experiment(nn.Module):
     """
     This class orchestrates the training, validation and test of the CNP
@@ -228,10 +227,12 @@ class Experiment(nn.Module):
         x_plot = target_x[random_function, :, :].flatten().cpu()
         mu_plot = mu[random_function, :, :].flatten().cpu()
         var_plot = cov_matrix[random_function, :, :].flatten().cpu()
-        plt.plot(x_plot, y_plot, color='red')
+        plt.scatter(x_plot, y_plot, color='red')
         plt.scatter(context_x_plot, context_y_plot, color='black')
-        plt.plot(x_plot, mu_plot, color='blue')
-        plt.fill_between(x_plot, y1=mu_plot + var_plot, y2=mu_plot - var_plot, alpha=0.2)
+        plt.scatter(x_plot, mu_plot, color='blue')
+        plt.scatter(x_plot, mu_plot + var_plot)
+        plt.scatter(x_plot, mu_plot - var_plot)
+        plt.fill_between(x_plot, y1=mu_plot + var_plot, y2=mu_plot - var_plot, alpha=0.2    )
         plt.show()
         plt.close()
 
@@ -262,7 +263,6 @@ class Experiment(nn.Module):
 
     def run_training(self, trainloader=None, valiloader=None, num_instances_train=None, num_instances_vali=None, noise=None,length_scale=None, gamma=None,
                      batch_size_train=None, batch_size_vali=None, plotting=False):
-
         """This function performs one training run
         Parameters
         ----------
@@ -279,7 +279,6 @@ class Experiment(nn.Module):
         batchsize: int, optional
             indicating if progress should be plotted
         """
-
         self._encoder.train()
         self._decoder.train()
 
@@ -289,7 +288,8 @@ class Experiment(nn.Module):
         for epoch in tqdm(range(self._n_epochs), total=self._n_epochs):
 
             if self._generatedata:  # generate data on the fly for every epoch
-                trainloader = Helper.create_loader(self._datagenerator, num_instances_train, noise, length_scale, gamma, batch_size_train)
+                trainloader = Helper.create_loader(self._datagenerator, num_instances_train, noise, length_scale, gamma,
+                                                   batch_size_train)
                 valiloader = Helper.create_loader(self._datagenerator, num_instances_vali, noise, length_scale, gamma, batch_size_vali)
             running_loss = 0
             #         get sample indexes

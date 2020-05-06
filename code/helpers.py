@@ -7,12 +7,9 @@ from torch.utils import data
 
 class Helper:
 
-    def __init__(self):
-        pass
-
     @staticmethod
     def scale_shift_uniform(a=0, b=1, *size):
-        return torch.rand(size=(size)) * (a - b) + b
+        return torch.rand(size=size) * (a - b) + b
 
     @staticmethod
     def create_loader(datagenerator_instance, num_instances, noise, length_scale, gamma, batch_size):
@@ -28,7 +25,7 @@ class Helper:
         if stack:
             return torch.stack([array for array in list_of_arrays])
         else:
-            [array for array in list_of_arrays]
+            return list_of_arrays
 
     @staticmethod
     def transform_var(var_tensor):
@@ -43,10 +40,8 @@ class Helper:
 
         return transformed_variance
 
-class Plotter:
 
-    def __init__(self):
-        pass
+class Plotter:
 
     @staticmethod
     def plot_training_progress(training_losses, vali_losses, interval=1):
@@ -63,7 +58,6 @@ class Plotter:
         plt.legend()
         plt.show()
         plt.close()
-        return
 
 
 class HyperParam:
