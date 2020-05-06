@@ -1,11 +1,11 @@
-s#system files
-.DS_Store
+#system files
+*.DS_Store
 *checkpoint.ipynb
 *.ipynb_checkpoints
 .python-version 
 .idea/
-code/__pycache__/
-code/ ../.python-version
+/cnp/__pycache__/*
+*.python-version
 
 #dependencies
 /tfm
@@ -22,6 +22,5 @@ tfm_1.pem
 #scratch_work
 code/Untitled.ipynb
 
-
 #data 
-data
+/data

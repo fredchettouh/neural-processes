@@ -4,7 +4,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from torch.utils import data
 
-
 class Helper:
 
     @staticmethod
@@ -59,6 +58,29 @@ class Plotter:
         plt.show()
         plt.close()
 
+    @staticmethod
+    def plot_run(batch_size, contxt_idx, xvalues, funcvalues, target_y,
+                 target_x, mu, cov_matrix):
+        """plots the validation run, i.e. the true function, context points,
+        mean function and uncertainty """
+        random_function = np.random.randint(0, batch_size)
+        context_y_plot = funcvalues[
+                         random_function, contxt_idx,:
+                         ].flatten().cpu()
+
+        context_x_plot = xvalues[random_function, contxt_idx, :].flatten().cpu()
+        y_plot = target_y[random_function, :, :].flatten().cpu()
+        x_plot = target_x[random_function, :, :].flatten().cpu()
+        mu_plot = mu[random_function, :, :].flatten().cpu()
+        var_plot = cov_matrix[random_function, :, :].flatten().cpu()
+        plt.scatter(x_plot, y_plot, color='red')
+        plt.scatter(context_x_plot, context_y_plot, color='black')
+        plt.scatter(x_plot, mu_plot, color='blue')
+        plt.fill_between(x_plot, y1=mu_plot + var_plot,
+                         y2=mu_plot - var_plot, alpha=0.2)
+        plt.show()
+        plt.close()
+
 
 class HyperParam:
 
@@ -67,3 +89,4 @@ class HyperParam:
         weights = trainer.run_training(trainloader)
         evaluation = trainer.run_test(weights, valiloader)
         return evaluation
+
