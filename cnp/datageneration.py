@@ -4,43 +4,25 @@
 ## Todo: rewrite kernel so that it works for higher order tensors
 
 
-
-
 import torch
 import argparse
-
 
 
 class DataGenerator():
     """Takes a specific dimensions and a kernel argument and returns a dataset 
     generated using the Kernel
-    
     Parameters:
     -----------
-    
-    xdim : int
-    
-        Dimension of each x value
+    xdim : int: Dimension of each x value
         
-    ydim : int
-    
-        Dimension of each y value
+    ydim : int: Dimension of each y value
         
-    range_x : tuple
+    range_x : tuple: min, max values of range on which to define the data
     
-        min, max values of range on which to define the data
-    
-    num_instances : int 
-    
-        Number data instances to generate
-    
-        
-    steps: tuple
-        
-        number of x values to create 
-    
-    """
+    num_instances : int : Number data instances to generate
 
+    steps: tuple: number of x values to create
+    """
     def __init__(self, xdim=1, ydim=1, range_x=(-2, 2), steps=400):
         self._xdim = xdim
         self._ydim = ydim

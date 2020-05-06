@@ -1,4 +1,4 @@
-from experiment import Experiment
+sfrom experiment import Experiment
 from ax.service import managed_loop
 from functools import partial
 
@@ -11,21 +11,16 @@ class HyperParam:
                  objective_name='MSE',
                  random_seed=4):
         """
-
         Parameters
         ----------
-        total_trials : int
-            scalar that indicates the number of
+        total_trials: int: scalar that indicates the number of
 
-        test_parameters : list
+        test_parameters: list: list of dictionaries in Ax format that indicates what values to be tested.
+        Values that are not explicitly defined will default, i.e. number of epochs
 
-            list of dictionaries in Ax format that indicates what values to be tested.
-            Values that are not explicitly defined will default, i.e. number of epochs
+        objective_name: str: Name of the objective to be minimized
 
-        objective_name : str
-            Name of the objective to be minimized
-
-        random_seed : int
+        random_seed: int
         """
         self.test_parameters = test_parameters
         self.total_trials = total_trials

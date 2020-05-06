@@ -11,73 +11,49 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 # custom imports
 
-from networks import Encoder, Decoder
-from helpers import Helper, Plotter
-from datageneration import DataGenerator
+from .networks import Encoder, Decoder
+from .helpers import Helper, Plotter
+from .datageneration import DataGenerator
 
 
 class Experiment(nn.Module):
     """
     This class orchestrates the training, validation and test of the CNP
-
     Parameters
     ----------
+    n_epochs: int: Number of training iterations to run
+    lr: float: Learning rate for the Solver
 
-    n_epochs: int
-        Number of training iterations to run
+    min_funcs: int: Minimum number of target values to sample
 
-    lr: float
-        Learning rate for the Solver
+    max_funcs: int: Minimum number of target values to sample
 
-    min_funcs: int
-        Minimum number of target values to sample
+    max_contx: int: Minimum number of context values to sample
 
-    max_funcs: int
-        Minimum number of target values to sample
+    min_contx: int: Minimum number of context values to sample
 
-    max_contx: int
-        Minimum number of context values to sample
+    dim_observation: int: Number of observations of each "joint target" that means of each function
 
-    min_contx: int
-        Minimum number of context values to sample
+    dimx: int: Dimension of each x value
 
-    dim_observation: int
-        Number of observations of each "joint target" that means of each function
+    dimy: int: Dimension of each y value
 
-    dimx: int
-        Dimension of each x value
+    dimr: tuple: Dimension of the encoding
 
-    dimy: int
-        Dimension of each y value
+    dimout: int: Dimensionality of the ouput of the decoder, e.g. batch_size,1,2 for the one d regression case
 
-    dimr: tuple
-        Dimension of the encoding
+    num_layers: int: Dimension of hidden layers
 
-    dimout: int
-        Dimensionality of the ouput of the decoder, e.g. batch_size,1,2 for the one d regression case
+    num_neurons: int: Number of Neurons for each hidden layer
 
-    num_layers : int
-        Dimension of hidden layers
+    train_on_gpu: boolean: Indicating whether or not a GPU is available
 
-    num_neurons: int
+    print_after: int: Indication of the we want to have a validation run
 
-        Number of Neurons for each hidden layer
+    generatedata: boolean, optional: If True, data will be generated using the Datagenerator
 
-    train_on_gpu: boolean
-
-        Indicating whether or not a GPU is available
-
-    print_after: int
-        Indication of the we want to have a validation run
-
-    generatedata: boolean, optional
-        If True, data will be generated using the Datagenerator
-
-    datagen_params: Dict, optional
-        Contains the parameters for data generation
-
+    datagen_params: Dict, optional: Contains the parameters for data generation
     """
-
     def __init__(self,
                  n_epochs=2000,
                  lr=0.001,
@@ -125,14 +101,10 @@ class Experiment(nn.Module):
             self._datagenerator = DataGenerator(xdim=dimx, ydim=dimy, range_x=range_x, steps=dim_observation)
 
     def _get_sample_indexes(self, both=True):
-
-        """Samples number and indexes of context and target points during training and test
-
+        """Samples number and indexes of context and target points during training and tests
         Parameters
         ----------
-
-        both: boolean
-            Indicates whether both context and target points are required
+        both: boolean: Indicates whether both context and target points are required
         """
         num_contxt = np.random.randint(self._min_contx, self._max_contx)
         num_trgts = np.random.randint(num_contxt + self._min_trgts, num_contxt + self._max_trgts)
@@ -144,37 +116,21 @@ class Experiment(nn.Module):
             return np.arange(0, self._dim_observation), contxt_idx
 
     def _prep_data(self, xvalues, funcvalues, training=True):
-
         """For every batch this function is called to prepare the data, i.e.
         sampling context and target points, shaping them appropriately and
         passing them through the encoder and decoder
         Parameters
         ----------
+        xvalues: tensor: (batch_size,self._dim_observation, self._xdim) that stores all the points
+        to sample from in this batch
 
-        xvalues: tensor
-            (batch_size,self._dim_observation, self._xdim) that stores all the points
-            to sample from in this batch
+        funcvalues: tensor: (batch_size,self._dim_observation, self._ydim) that stores all the points
+        to sample from in this batch
 
-        funcvalues: tensor
-            (batch_size,self._dim_observation, self._ydim) that stores all the points
-            to sample from in this batch
+        training: boolean: indicates whether this is a training pass or a validation pass
 
-        training: boolean
-            indicates whether this is a training pass or a validation pass
-
-        returns:
-        batch_size,
-        target_x,
-        target_y,
-        context_x,
-        contxt_idx,
-        context_y,
-        mu,
-        sigma_transformed,
-        distribution
-
+        returns: batch_size, target_x, target_y, context_x, contxt_idx, context_y, mu, sigma_transformed, distribution
         """
-
         if self._train_on_gpu:
             xvalues, funcvalues = xvalues.cuda(), funcvalues.cuda()
         if training:
@@ -217,9 +173,7 @@ class Experiment(nn.Module):
         return batch_size, target_x, target_y, context_x, contxt_idx, context_y, mu, sigma_transformed, distribution
 
     def plot_run(self, batch_size, contxt_idx, xvalues, funcvalues, target_y, target_x, mu, cov_matrix):
-
         """plots the validation run, i.e. the true function, context points, mean function and uncertainty"""
-
         random_function = np.random.randint(0, batch_size)
         context_y_plot = funcvalues[random_function, contxt_idx, :].flatten().cpu()
         context_x_plot = xvalues[random_function, contxt_idx, :].flatten().cpu()
@@ -230,9 +184,7 @@ class Experiment(nn.Module):
         plt.scatter(x_plot, y_plot, color='red')
         plt.scatter(context_x_plot, context_y_plot, color='black')
         plt.scatter(x_plot, mu_plot, color='blue')
-        plt.scatter(x_plot, mu_plot + var_plot)
-        plt.scatter(x_plot, mu_plot - var_plot)
-        plt.fill_between(x_plot, y1=mu_plot + var_plot, y2=mu_plot - var_plot, alpha=0.2    )
+        plt.fill_between(x_plot, y1=mu_plot + var_plot, y2=mu_plot - var_plot, alpha=0.2)
         plt.show()
         plt.close()
 
@@ -266,18 +218,13 @@ class Experiment(nn.Module):
         """This function performs one training run
         Parameters
         ----------
+        trainloader: torch.utils.data.DataLoader, optional: iterable object that holds the data in batch sizes
 
-        trainloader: torch.utils.data.DataLoader, optional
-            iterable object that holds the data in batch sizes
+        valiloader: torch.utils.data.DataLoader, optional: iterable object that holds validation data
 
-        valiloader: torch.utils.data.DataLoader, optional
-            iterable object that holds validation data
+        plotting: boolean, optional: indicating if progress should be plotted
 
-        plotting: boolean, optional
-            indicating if progress should be plotted
-
-        batchsize: int, optional
-            indicating if progress should be plotted
+        batchsize: int, optional: indicating if progress should be plotted
         """
         self._encoder.train()
         self._decoder.train()
@@ -320,18 +267,13 @@ class Experiment(nn.Module):
         return self._decoder.state_dict()
 
     def run_test(self, state_dict, testloader, plotting=False):
-
         """This function performs one test run
                 Parameters
                 ----------
+                testloader: torch.utils.data.DataLoader: iterable object that holds validation data
 
-                testloader: torch.utils.data.DataLoader
-                    iterable object that holds validation data
-
-                state_dict: dictionary
-                    pytorch dictionary to load weights from
+                state_dict: dictionary: pytorch dictionary to load weights from
         """
-
         running_mse = 0
         # state_dict = torch.load(file_path_weights)
         self._decoder.load_state_dict(state_dict)

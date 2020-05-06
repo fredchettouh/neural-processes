@@ -1,7 +1,7 @@
 # custom imports
-from experiment import Experiment
-from datageneration import DataGenerator
-from helpers import Helper
+from .experiment import Experiment
+from .datageneration import DataGenerator
+frohelpers import Helper
 # torch imports
 from torch.utils import data
 import torch
