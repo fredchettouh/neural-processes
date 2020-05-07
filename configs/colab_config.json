@@ -1,0 +1,30 @@
+{
+  "datageneration": {
+    "id" : "1IKWh-NPPyZWLki9tsKthRmS7CRPTrcl-",
+    "file" : "datageneration.py"
+  },
+  "helpers": {
+    "id" : "1ZuFfJW9lxX2FnGXESbEHsieOERV24oe1",
+    "file" : "helpers.py"
+  },
+  "trainer": {
+    "id" : "1K5mGvhn8LbdxG2iM2fuCBRJ8pgZqn4PA",
+    "file" : "trainer.py"
+  },
+  "network": {
+    "id" : "1iFbCIY8IMaqO4I8mu2J7ie7UDJsLGtRv",
+    "file" : "networks.py"
+  },
+  "model_json": {
+    "id" : "1srLHOf2Iy0-1tKkPf-qGh_9h-pbPKtOV",
+    "file" :"config.json"
+  },
+  "hyper_json": {
+    "id" : "10GRUEkZNDG4EdE7esvbPUcKIPJF0Ph37",
+    "file" :"hyperparameter_tuning.json"
+  },
+  "param_tuner": {
+    "id" : "1shxq9rIy_7wsn3SQ681UGNb9YRm1wSbO",
+    "file" : "param_tuner.py"
+  }
+}
