@@ -9,11 +9,13 @@ from torch.utils import data
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-# custom imports
+# custom imports - WE SHOULD USE RELATIVE IMPORTS HERE
+# I.E. from .networks import Encoder, Decoder
+# HOWEVER THIS IS NOT POSSIBLE WITH GOOGLE COLAB
 
-from .networks import Encoder, Decoder
-from .helpers import Helper, Plotter
-from .datageneration import DataGenerator
+from networks import Encoder, Decoder
+from helpers import Helper, Plotter
+from datageneration import DataGenerator
 
 
 def get_sample_indexes(min_contx, max_contx, min_trgts, max_trgts,
@@ -65,7 +67,7 @@ def format_encoding(encoding, batch_size, num_contxt, num_trgt):
     return encoding_stacked
 
 
-class Experiment(nn.Module):
+class RegressionTrainer():
     """
     This class orchestrates the training, validation and test of the CNP
     Parameters
@@ -124,6 +126,7 @@ class Experiment(nn.Module):
                  train_on_gpu=False,
                  print_after=2000,
                  generatedata=False,
+                 data_as_curve=True,
                  range_x=None):
 
         super().__init__()
@@ -134,6 +137,7 @@ class Experiment(nn.Module):
         self._train_on_gpu = train_on_gpu
         self._print_after = print_after
         self._generatedata = generatedata
+        self._data_as_curve = data_as_curve
         self._encoder = Encoder(dimx, dimy, dimr, num_layers_encoder,
                                 num_neurons_encoder)
         self._decoder = Decoder(dimx, num_neurons_encoder, dimout,
@@ -157,8 +161,6 @@ class Experiment(nn.Module):
 
     def _prep_data(self, xvalues, funcvalues, training=True):
 
-        if self._train_on_gpu:
-            xvalues, funcvalues = xvalues.cuda(), funcvalues.cuda()
         if training:
             func_idx, contxt_idx = get_sample_indexes(
                 **self._sample_specs_kwargs,
@@ -204,16 +206,21 @@ class Experiment(nn.Module):
         self._decoder.eval()
 
         running_vali_loss = 0
-        self.eval()
 
         with torch.no_grad():
 
             for xvalues, funcvalues in valiloader:
-                num_contxt, num_trgt, context_x, context_y, target_x, \
-                target_y, context_x_stacked, context_y_stacked, \
-                target_x_stacked, batch_size, func_idx, \
-                contxt_idx = self._prep_data(xvalues, funcvalues,
-                                             training=False)
+
+                if self._train_on_gpu:
+                    xvalues, funcvalues = xvalues.cuda(), funcvalues.cuda()
+
+                if self._data_as_curve:
+
+                    num_contxt, num_trgt, context_x, context_y, target_x, \
+                    target_y, context_x_stacked, context_y_stacked, \
+                    target_x_stacked, batch_size, func_idx, \
+                    contxt_idx = self._prep_data(xvalues, funcvalues,
+                                                 training=False)
 
                 mu, sigma_transformed, distribution = self._network_pass(
                     context_x_stacked, context_y_stacked,
@@ -268,6 +275,9 @@ class Experiment(nn.Module):
             running_loss = 0
             #         get sample indexes
             for xvalues, funcvalues in trainloader:
+
+                if self._train_on_gpu:
+                    xvalues, funcvalues = xvalues.cuda(), funcvalues.cuda()
 
                 optimizer.zero_grad()
 
