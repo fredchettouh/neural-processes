@@ -4,7 +4,7 @@
 *.ipynb_checkpoints
 .python-version 
 .idea/
-/cnp/__pycache__/
+/cnp/__pycache__/*
 *.python-version
 
 #dependencies
@@ -20,7 +20,7 @@ local_requirements.txt
 tfm_1.pem
 
 #scratch_work
-*Untitled.ipynb
+code/Untitled.ipynb
 
 #data 
 /data
