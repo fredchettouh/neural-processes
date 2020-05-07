@@ -266,7 +266,7 @@ class Experiment(nn.Module):
                                                   length_scale, gamma,
                                                   batch_size_vali)
             running_loss = 0
-            #         get sample indexes
+            #  get sample indexes
             for xvalues, funcvalues in trainloader:
 
                 optimizer.zero_grad()
