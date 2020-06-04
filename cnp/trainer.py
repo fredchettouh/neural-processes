@@ -13,9 +13,9 @@ from tqdm import tqdm
 # I.E. from .networks import Encoder, Decoder
 # HOWEVER THIS IS NOT POSSIBLE WITH GOOGLE COLAB
 
-from networks import Encoder, Decoder
-from helpers import Helper, Plotter
-from datageneration import DataGenerator
+from .networks import Encoder, Decoder
+from .helpers import Helper, Plotter
+from .datageneration import DataGenerator
 
 
 def get_sample_indexes(min_contx, max_contx, min_trgts, max_trgts,
@@ -177,8 +177,8 @@ class RegressionTrainer():
             contxt_idx, func_idx, xvalues,
             funcvalues, batch_size)
 
-        return num_contxt, num_trgt, context_x, context_y, target_x, target_y,\
-               context_x_stacked, context_y_stacked, target_x_stacked,\
+        return num_contxt, num_trgt, context_x, context_y, target_x, target_y, \
+               context_x_stacked, context_y_stacked, target_x_stacked, \
                batch_size, func_idx, contxt_idx
 
     def _network_pass(self, context_x_stacked, context_y_stacked,
@@ -186,7 +186,8 @@ class RegressionTrainer():
         # running the context values through the encoding
         encoding = self._encoder(context_x_stacked, context_y_stacked)
 
-        encoding_stacked = format_encoding(encoding, batch_size, num_contxt, num_trgt)
+        encoding_stacked = format_encoding(encoding, batch_size, num_contxt,
+                                           num_trgt)
         decoding = self._decoder(target_x_stacked, encoding_stacked)
         decoding_rshp = decoding.view(batch_size, num_trgt, -1)
 
@@ -215,7 +216,6 @@ class RegressionTrainer():
                     xvalues, funcvalues = xvalues.cuda(), funcvalues.cuda()
 
                 if self._data_as_curve:
-
                     num_contxt, num_trgt, context_x, context_y, target_x, \
                     target_y, context_x_stacked, context_y_stacked, \
                     target_x_stacked, batch_size, func_idx, \
@@ -264,16 +264,29 @@ class RegressionTrainer():
         for epoch in tqdm(range(self._n_epochs), total=self._n_epochs):
 
             if self._generatedata:  # generate data on the fly for every epoch
-                trainloader = Helper.create_loader(self._datagenerator,
-                                                   num_instances_train, noise,
-                                                   length_scale, gamma,
-                                                   batch_size_train)
-                valiloader = Helper.create_loader(self._datagenerator,
-                                                  num_instances_vali, noise,
-                                                  length_scale, gamma,
-                                                  batch_size_vali)
-            running_loss = 0
+
+                x_values, func_x = self._datagenerator.generate_curves(
+                    num_instances_train, noise,
+                    length_scale, gamma)
+                func_x = Helper.list_np_to_sensor(func_x)
+                x_values = x_values.repeat(func_x.shape[0], 1, 1)
+
+                trainloader = Helper.create_loader(
+                    x_values, func_x, batch_size_train)
+
+                x_values, func_x = self._datagenerator.generate_curves(
+                    num_instances_train,
+                    noise, length_scale, gamma)
+                func_x = Helper.list_np_to_sensor(func_x)
+                x_values = x_values.repeat(func_x.shape[0], 1, 1)
+
+                valiloader = Helper.create_loader(
+                    x_values, func_x, batch_size_vali)
+
+                running_loss = 0
             #  get sample indexes
+
+
             for xvalues, funcvalues in trainloader:
 
                 if self._train_on_gpu:
@@ -304,7 +317,6 @@ class RegressionTrainer():
                 if epoch % self._print_after == 0:
                     print(f'Mean loss at epoch {epoch} : {mean_epoch_loss[-1]}')
                     if valiloader:
-                        print(plotting)
                         mean_vali_loss.append(
                             self._validation_run(epoch, plotting, valiloader))
                         self._encoder.train(), self._decoder.train()

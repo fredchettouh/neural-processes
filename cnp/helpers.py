@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from torch.utils import data
 
+
 class Helper:
 
     @staticmethod
@@ -19,6 +20,13 @@ class Helper:
         dataloader = data.DataLoader(dataset, batch_size=batch_size)
         return dataloader
 
+    @staticmethod
+    def create_loader(x_values, func_x, batch_size):
+        dataset = data.TensorDataset(x_values, func_x)
+        dataloader = data.DataLoader(dataset, batch_size=batch_size)
+        return dataloader
+
+    @staticmethod
     @staticmethod
     def list_np_to_sensor(list_of_arrays, stack=True):
         if stack:
@@ -44,7 +52,6 @@ class Plotter:
 
     @staticmethod
     def plot_training_progress(training_losses, vali_losses, interval=1):
-
         title = "Development of training and validation loss"
         xlabel = "Epoch"
         ylabel = "Negative log probabability "
@@ -65,7 +72,7 @@ class Plotter:
         mean function and uncertainty """
         random_function = np.random.randint(0, batch_size)
         context_y_plot = funcvalues[
-                         random_function, contxt_idx,:
+                         random_function, contxt_idx, :
                          ].flatten().cpu()
 
         context_x_plot = xvalues[random_function, contxt_idx, :].flatten().cpu()
@@ -89,4 +96,3 @@ class HyperParam:
         weights = trainer.run_training(trainloader)
         evaluation = trainer.run_test(weights, valiloader)
         return evaluation
-
