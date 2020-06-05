@@ -245,7 +245,7 @@ class RegressionTrainer:
                 print(
                     f' Validation loss after {current_epoch} equals {mean_vali_loss}')
                 if plotting:
-                    Plotter.plot_run(batch_size, contxt_idx, xvalues,
+                    Plotter.plot_run(contxt_idx, xvalues,
                                      funcvalues, target_y, target_x, mu,
                                      sigma_transformed)
             return mean_vali_loss
@@ -283,8 +283,10 @@ class RegressionTrainer:
                 X_train, y_train = self._datagenerator.generate_curves(
                     num_instances_train, noise,
                     length_scale, gamma)
-                y_train = Helper.list_np_to_sensor.__func__(y_train)
+                y_train = Helper.list_np_to_sensor(y_train)
                 X_train = X_train.repeat(y_train.shape[0], 1, 1)
+
+
 
                 trainloader = Helper.create_loader(
                     X_train, y_train, batch_size_train)
@@ -292,7 +294,7 @@ class RegressionTrainer:
                 X_vali, y_vali = self._datagenerator.generate_curves(
                     num_instances_vali,
                     noise, length_scale, gamma)
-                y_vali = Helper.list_np_to_sensor.__func__(y_vali)
+                y_vali = Helper.list_np_to_sensor(y_vali)
                 X_vali = X_vali.repeat(y_vali.shape[0], 1, 1)
 
                 valiloader = Helper.create_loader(
@@ -378,7 +380,7 @@ class RegressionTrainer:
                 mse = ((mu - target_y) ** 2).mean(1).mean(0)
                 running_mse += mse.item()
                 if plotting:
-                    self.plot_run(batch_size, contxt_idx, xvalues, funcvalues,
+                    self.plot_run(contxt_idx, xvalues, funcvalues,
                                   target_y, target_x, mu,
                                   sigma_transformed)
             else:
