@@ -8,9 +8,9 @@
       "max_contx": 10,
       "min_contx": 3,
       "dim_observation": 50,
-      "dimx": 13,
+      "dimx": 1,
       "dimy": 1,
-      "dimr": 20,
+      "dimr": 128,
       "dimout": 2,
       "dropout": 0,
       "num_layers_encoder": 4,
@@ -26,12 +26,12 @@
   "training_params":
     {
       "data_dir" : "data",
-      "extension": "boston_housing",
-      "data_file": "boston_house_prices.csv",
-      "target_col": "MEDV",
+      "extension": "1d_singlefunc",
+      "data_file": "1d_dataset.csv",
+      "target_col": "target",
       "train_share": 0.8,
       "seed": 0,
-      "plotting": false,
+      "plotting": true,
       "batch_size_train": 50,
       "batch_size_vali": 50
     }
