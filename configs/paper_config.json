@@ -1,0 +1,37 @@
+{
+"experiment_params": {
+      "n_epochs": 200000,
+      "lr": 0.0001,
+      "min_funcs": 2,
+      "max_funcs": 10,
+      "max_contx": 10,
+      "min_contx": 3,
+      "dim_observation": 400,
+      "dimx": 1,
+      "dimy": 1,
+      "dimr": 128,
+      "dimout": 2,
+      "dropout": 0,
+      "num_layers_encoder": 4,
+      "num_neurons_encoder": 128,
+      "num_layers_decoder": 3,
+      "num_neurons_decoder": 128,
+      "train_on_gpu": false,
+      "print_after": 5000,
+      "generatedata": true,
+      "range_x": [-2,2]
+    },
+    "training_params": {
+      "num_instances_train": 64,
+      "num_instances_vali": 1,
+      "noise": 0.0004,
+      "length_scale": 0.4,
+      "batch_size_train": 64,
+      "gamma": 1,
+      "batch_size_vali": 1,
+      "data_path": null,
+      "target_col": null,
+      "train_share": null,
+      "plotting": true
+    }
+}

@@ -283,7 +283,7 @@ class RegressionTrainer:
                 X_train, y_train = self._datagenerator.generate_curves(
                     num_instances_train, noise,
                     length_scale, gamma)
-                y_train = Helper.list_np_to_sensor(y_train)
+                y_train = Helper.list_np_to_sensor.__func__(y_train)
                 X_train = X_train.repeat(y_train.shape[0], 1, 1)
 
                 trainloader = Helper.create_loader(
@@ -292,7 +292,7 @@ class RegressionTrainer:
                 X_vali, y_vali = self._datagenerator.generate_curves(
                     num_instances_vali,
                     noise, length_scale, gamma)
-                y_vali = Helper.list_np_to_sensor(y_vali)
+                y_vali = Helper.list_np_to_sensor.__func__(y_vali)
                 X_vali = X_vali.repeat(y_vali.shape[0], 1, 1)
 
                 valiloader = Helper.create_loader(
