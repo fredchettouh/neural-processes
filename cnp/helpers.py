@@ -3,6 +3,8 @@ from torch.nn.functional import softplus
 import numpy as np
 import matplotlib.pyplot as plt
 from torch.utils import data
+import pandas as pd
+from IPython.display import display
 
 
 class Helper:
@@ -12,13 +14,46 @@ class Helper:
         return torch.rand(size=size) * (a - b) + b
 
     @staticmethod
-    def create_loader(datagenerator_instance, num_instances, noise, length_scale, gamma, batch_size):
-        x_values, func_x = datagenerator_instance.generate_curves(num_instances, noise, length_scale, gamma)
-        func_x = Helper.list_np_to_sensor(func_x)
-        x_values = x_values.repeat(func_x.shape[0], 1, 1)
-        dataset = data.TensorDataset(x_values, func_x)
-        dataloader = data.DataLoader(dataset, batch_size=batch_size)
-        return dataloader
+    def read_and_transform(data_path, target_col, train_share=0.8, seed=None):
+        np.random.seed(seed)
+        df = pd.read_csv(data_path)
+        df.rename(columns={target_col: 'target'}, inplace=True)
+
+        random_idx = np.random.permutation(len(df))
+        train_len = int(train_share * len(df))
+        train = df.iloc[random_idx[:train_len]].reset_index(drop=True)
+        vali = df.iloc[random_idx[train_len:]].reset_index(drop=True)
+
+        X_train, y_train = train.drop(labels=['target'], axis=1).to_numpy(
+            np.float64), train['target'].to_numpy(np.float64)
+        X_vali, y_vali = vali.drop(labels=['target'], axis=1).to_numpy(
+            np.float64), vali['target'].to_numpy(np.float64)
+        X_train, y_train = torch.from_numpy(X_train).float(), \
+                           torch.from_numpy(y_train).float()
+        X_vali, y_vali = torch.from_numpy(X_vali).float(), \
+                         torch.from_numpy(y_vali).float()
+        return X_train, y_train, X_vali, y_vali
+
+    @staticmethod
+    def shuffletensor(*args):
+        arg_list = []
+        for arg in args:
+            idx = torch.randperm(arg.shape[0])
+            if arg.dim() == 1:
+                arg = arg[idx]
+            else:
+                arg = arg[idx, :]
+            arg_list.append(arg)
+        return arg_list
+
+    # @staticmethod
+    # def create_loader(datagenerator_instance, num_instances, noise, length_scale, gamma, batch_size):
+    #     x_values, func_x = datagenerator_instance.generate_curves(num_instances, noise, length_scale, gamma)
+    #     func_x = Helper.list_np_to_sensor(func_x)
+    #     x_values = x_values.repeat(func_x.shape[0], 1, 1)
+    #     dataset = data.TensorDataset(x_values, func_x)
+    #     dataloader = data.DataLoader(dataset, batch_size=batch_size)
+    #     return dataloader
 
     @staticmethod
     def create_loader(x_values, func_x, batch_size):

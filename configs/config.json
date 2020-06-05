@@ -107,7 +107,6 @@
       "batch_size_vali": 20
     }
   },
-
   "height_weight_configs": {
     "experiment_params": {
       "n_epochs": 200000,

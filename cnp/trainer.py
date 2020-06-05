@@ -67,7 +67,7 @@ def format_encoding(encoding, batch_size, num_contxt, num_trgt):
     return encoding_stacked
 
 
-class RegressionTrainer():
+class RegressionTrainer:
     """
     This class orchestrates the training, validation and test of the CNP
     Parameters
@@ -183,6 +183,7 @@ class RegressionTrainer():
 
     def _network_pass(self, context_x_stacked, context_y_stacked,
                       target_x_stacked, batch_size, num_trgt, num_contxt):
+
         # running the context values through the encoding
         encoding = self._encoder(context_x_stacked, context_y_stacked)
 
@@ -219,8 +220,18 @@ class RegressionTrainer():
                     num_contxt, num_trgt, context_x, context_y, target_x, \
                     target_y, context_x_stacked, context_y_stacked, \
                     target_x_stacked, batch_size, func_idx, \
-                    contxt_idx = self._prep_data(xvalues, funcvalues,
-                                                 training=False)
+                    contxt_idx = self._prep_data(
+                        xvalues, funcvalues, training=False)
+
+                if not self._generatedata:
+                    xvalues = xvalues.unsqueeze(0)
+                    funcvalues = funcvalues[None, :, None]
+
+                    num_contxt, num_trgt, context_x, context_y, target_x, \
+                    target_y, context_x_stacked, context_y_stacked, \
+                    target_x_stacked, batch_size, func_idx, \
+                    contxt_idx = self._prep_data(
+                        xvalues, funcvalues, training=False)
 
                 mu, sigma_transformed, distribution = self._network_pass(
                     context_x_stacked, context_y_stacked,
@@ -239,11 +250,11 @@ class RegressionTrainer():
                                      sigma_transformed)
             return mean_vali_loss
 
-    def run_training(self, trainloader=None, valiloader=None,
+    def run_training(self, data_path=None, target_col=None, train_share=None,
                      num_instances_train=None, num_instances_vali=None,
                      noise=None, length_scale=None, gamma=None,
                      batch_size_train=None, batch_size_vali=None,
-                     plotting=False):
+                     plotting=False, ):
         """This function performs one training run
         Parameters
         ----------
@@ -258,6 +269,10 @@ class RegressionTrainer():
         self._encoder.train()
         self._decoder.train()
 
+        if not self._generatedata:
+            X_train, y_train, X_vali, y_vali = Helper.read_and_transform(
+                data_path, target_col, train_share)
+
         optimizer = optim.Adam(self._decoder.parameters())
         mean_epoch_loss = []
         mean_vali_loss = []
@@ -265,29 +280,41 @@ class RegressionTrainer():
 
             if self._generatedata:  # generate data on the fly for every epoch
 
-                x_values, func_x = self._datagenerator.generate_curves(
+                X_train, y_train = self._datagenerator.generate_curves(
                     num_instances_train, noise,
                     length_scale, gamma)
-                func_x = Helper.list_np_to_sensor(func_x)
-                x_values = x_values.repeat(func_x.shape[0], 1, 1)
+                y_train = Helper.list_np_to_sensor(y_train)
+                X_train = X_train.repeat(y_train.shape[0], 1, 1)
 
                 trainloader = Helper.create_loader(
-                    x_values, func_x, batch_size_train)
+                    X_train, y_train, batch_size_train)
 
-                x_values, func_x = self._datagenerator.generate_curves(
-                    num_instances_train,
+                X_vali, y_vali = self._datagenerator.generate_curves(
+                    num_instances_vali,
                     noise, length_scale, gamma)
-                func_x = Helper.list_np_to_sensor(func_x)
-                x_values = x_values.repeat(func_x.shape[0], 1, 1)
+                y_vali = Helper.list_np_to_sensor(y_vali)
+                X_vali = X_vali.repeat(y_vali.shape[0], 1, 1)
 
                 valiloader = Helper.create_loader(
-                    x_values, func_x, batch_size_vali)
+                    X_vali, y_vali, batch_size_vali)
 
-                running_loss = 0
             #  get sample indexes
 
+            else:
+                train = Helper.shuffletensor(X_train, y_train)
+                X_train, y_train = train[0], train[1]
+
+                trainloader = Helper.create_loader(
+                    X_train, y_train, batch_size_train)
+                valiloader = Helper.create_loader(
+                    X_vali, y_vali, batch_size_vali)
+
+            running_loss = 0
 
             for xvalues, funcvalues in trainloader:
+                if not self._generatedata:
+                    xvalues = xvalues.unsqueeze(0)
+                    funcvalues = funcvalues[None, :, None]
 
                 if self._train_on_gpu:
                     xvalues, funcvalues = xvalues.cuda(), funcvalues.cuda()
@@ -311,6 +338,7 @@ class RegressionTrainer():
 
                 loss.backward()
                 optimizer.step()
+
             else:
                 mean_epoch_loss.append(running_loss / len(trainloader))
 

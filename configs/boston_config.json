@@ -1,0 +1,39 @@
+{
+  "experiment_params":
+    {
+      "n_epochs": 10000,
+      "lr": 0.0001,
+      "min_funcs": 2,
+      "max_funcs": 10,
+      "max_contx": 10,
+      "min_contx": 3,
+      "dim_observation": 50,
+      "dimx": 13,
+      "dimy": 1,
+      "dimr": 20,
+      "dimout": 2,
+      "dropout": 0,
+      "num_layers_encoder": 4,
+      "num_neurons_encoder": 15,
+      "num_layers_decoder": 3,
+      "num_neurons_decoder": 15,
+      "train_on_gpu": false,
+      "print_after": 100,
+      "generatedata": false,
+      "data_as_curve": false,
+      "range_x": null
+    },
+  "training_params":
+    {
+      "data_dir" : "data",
+      "extension": "boston_housing",
+      "data_file": "boston_house_prices.csv",
+      "target_col": "MEDV",
+      "train_share": 0.8,
+      "seed": 0,
+      "plotting": false,
+      "batch_size_train": 50,
+      "batch_size_vali": 50
+    }
+
+}

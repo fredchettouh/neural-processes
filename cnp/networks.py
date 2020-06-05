@@ -52,6 +52,7 @@ class Encoder(nn.Module):
     def __init__(self, dimx: int, dimy: int, dimr: int,
                  num_layers: int, num_neurons: int,
                  dropout: float = 0) -> None:
+
         super().__init__()
 
         self._dimx = dimx
