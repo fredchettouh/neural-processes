@@ -9,14 +9,14 @@ from torch.utils import data
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+from importlib import import_module
+
 # custom imports - WE SHOULD USE RELATIVE IMPORTS HERE
 # I.E. from .networks import Encoder, Decoder
 # HOWEVER THIS IS NOT POSSIBLE WITH GOOGLE COLAB
 
 from .networks import Encoder, Decoder
 from .helpers import Helper, Plotter
-from .datageneration import DataGenerator
-
 
 def get_sample_indexes(min_contx, max_contx, min_trgts, max_trgts,
                        dim_observation, both=True):
@@ -54,6 +54,7 @@ def select_data(contxt_idx, func_idx, xvalues, funcvalues, batch_size):
 
 
 def format_encoding(encoding, batch_size, num_contxt, num_trgt):
+    print(encoding.shape)
     encoding = encoding.view(batch_size, num_contxt, -1)
     # averaging the encoding
     encoding_avg = encoding.mean(1)
@@ -125,7 +126,7 @@ class RegressionTrainer:
                  dropout=0,
                  train_on_gpu=False,
                  print_after=2000,
-                 generatedata=False,
+                 datagenerator=None,
                  data_as_curve=True,
                  range_x=None):
 
@@ -136,8 +137,8 @@ class RegressionTrainer:
         self._dim_observation = dim_observation
         self._train_on_gpu = train_on_gpu
         self._print_after = print_after
-        self._generatedata = generatedata
         self._data_as_curve = data_as_curve
+        self._datagenerator = datagenerator
         self._encoder = Encoder(dimx, dimy, dimr, num_layers_encoder,
                                 num_neurons_encoder)
         self._decoder = Decoder(dimx, num_neurons_encoder, dimout,
@@ -154,10 +155,16 @@ class RegressionTrainer:
             self._encoder.cuda()
             self._decoder.cuda()
 
-        if self._generatedata:
-            self._datagenerator = DataGenerator(xdim=dimx, ydim=dimy,
-                                                range_x=range_x,
-                                                steps=dim_observation)
+        if datagenerator:
+
+            package_name, method_name = datagenerator.rsplit('.', 1)
+            package = import_module(package_name)
+            method = getattr(package, method_name)
+
+            self._datagenerator = method(
+                xdim=dimx,
+                range_x=range_x,
+                steps=dim_observation)
 
     def _prep_data(self, xvalues, funcvalues, training=True):
 
@@ -214,6 +221,7 @@ class RegressionTrainer:
             for xvalues, funcvalues in valiloader:
 
                 if self._train_on_gpu:
+
                     xvalues, funcvalues = xvalues.cuda(), funcvalues.cuda()
 
                 if self._data_as_curve:
@@ -223,15 +231,18 @@ class RegressionTrainer:
                     contxt_idx = self._prep_data(
                         xvalues, funcvalues, training=False)
 
-                if not self._generatedata:
+                if not self._datagenerator:
                     xvalues = xvalues.unsqueeze(0)
                     funcvalues = funcvalues[None, :, None]
+
+                    # i dont need context_x, context_y or funcidx
 
                     num_contxt, num_trgt, context_x, context_y, target_x, \
                     target_y, context_x_stacked, context_y_stacked, \
                     target_x_stacked, batch_size, func_idx, \
                     contxt_idx = self._prep_data(
                         xvalues, funcvalues, training=False)
+
 
                 mu, sigma_transformed, distribution = self._network_pass(
                     context_x_stacked, context_y_stacked,
@@ -250,50 +261,59 @@ class RegressionTrainer:
                                      sigma_transformed)
             return mean_vali_loss
 
-    def run_training(self, data_path=None, target_col=None, train_share=None,
-                     num_instances_train=None, num_instances_vali=None,
-                     noise=None, length_scale=None, gamma=None,
-                     batch_size_train=None, batch_size_vali=None,
-                     plotting=False, ):
+    def run_training(self, plotting=False, batch_size_train=None,
+                     batch_size_vali=None, kwargs=None):
         """This function performs one training run
         Parameters
         ----------
-        trainloader: torch.utils.data.DataLoader, optional: iterable object that holds the data in batch sizes
-
-        valiloader: torch.utils.data.DataLoader, optional: iterable object that holds validation data
 
         plotting: boolean, optional: indicating if progress should be plotted
 
-        batchsize: int, optional: indicating if progress should be plotted
+        batch_size_train: batch size of data
+
+        batch_size_vali: batch size of data
+
+        **kwargs: dict, takes key value pair data depening on wether data
+        is generated on the fly or read in.
+
         """
         self._encoder.train()
         self._decoder.train()
 
-        if not self._generatedata:
+        if not self._datagenerator:
             X_train, y_train, X_vali, y_vali = Helper.read_and_transform(
-                data_path, target_col, train_share)
+                data_path=kwargs['data_path'],
+                target_col=kwargs['target_col'],
+                train_share=kwargs['train_share'],
+                seed=kwargs['seed']
+            )
 
         optimizer = optim.Adam(self._decoder.parameters())
         mean_epoch_loss = []
         mean_vali_loss = []
+
+
         for epoch in tqdm(range(self._n_epochs), total=self._n_epochs):
 
-            if self._generatedata:  # generate data on the fly for every epoch
+            # TODO:this part should be happening in the data generation part
+
+            if self._datagenerator:  # generate data on the fly for every epoch
+
+                kwargs['train'] = True
 
                 X_train, y_train = self._datagenerator.generate_curves(
-                    num_instances_train, noise,
-                    length_scale, gamma)
+                    **kwargs)
+
                 y_train = Helper.list_np_to_sensor(y_train)
                 X_train = X_train.repeat(y_train.shape[0], 1, 1)
-
-
 
                 trainloader = Helper.create_loader(
                     X_train, y_train, batch_size_train)
 
-                X_vali, y_vali = self._datagenerator.generate_curves(
-                    num_instances_vali,
-                    noise, length_scale, gamma)
+                kwargs['train'] = False
+
+                X_vali, y_vali = self._datagenerator.generate_curves(**kwargs)
+
                 y_vali = Helper.list_np_to_sensor(y_vali)
                 X_vali = X_vali.repeat(y_vali.shape[0], 1, 1)
 
@@ -303,6 +323,8 @@ class RegressionTrainer:
             #  get sample indexes
 
             else:
+
+                # TODO this should happen in data generation
                 train = Helper.shuffletensor(X_train, y_train)
                 X_train, y_train = train[0], train[1]
 
@@ -314,7 +336,7 @@ class RegressionTrainer:
             running_loss = 0
 
             for xvalues, funcvalues in trainloader:
-                if not self._generatedata:
+                if not self._datagenerator:
                     xvalues = xvalues.unsqueeze(0)
                     funcvalues = funcvalues[None, :, None]
 
@@ -323,6 +345,7 @@ class RegressionTrainer:
 
                 optimizer.zero_grad()
 
+                # TODO this should be in conditional neural process
                 num_contxt, num_trgt, context_x, context_y, target_x, \
                 target_y, context_x_stacked, context_y_stacked, \
                 target_x_stacked, batch_size, func_idx, \
@@ -330,6 +353,7 @@ class RegressionTrainer:
                                              funcvalues,
                                              training=True)
 
+                # TODO this should be in conditional neural process
                 mu, sigma_transformed, distribution = self._network_pass(
                     context_x_stacked, context_y_stacked,
                     target_x_stacked, batch_size, num_trgt, num_contxt)
@@ -355,7 +379,7 @@ class RegressionTrainer:
                                            interval=self._print_after)
 
         return self._decoder.state_dict()
-
+    # TODO this needs to be updated
     def run_test(self, state_dict, testloader, plotting=False):
         """This function performs one test run
                 Parameters

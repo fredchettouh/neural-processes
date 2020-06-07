@@ -109,7 +109,7 @@ class Plotter:
         for propper plotting
          """
 
-        context_y_plot = funcvalues[:, contxt_idx, : ].flatten().cpu()
+        context_y_plot = funcvalues[:, contxt_idx, :].flatten().cpu()
         context_x_plot = xvalues[:, contxt_idx, :].flatten().cpu()
         y_plot = target_y.flatten().cpu().numpy()
         x_plot = target_x.flatten().cpu().numpy()
@@ -124,7 +124,6 @@ class Plotter:
         plt.scatter(x_plot, y_plot, color='red')
         plt.plot(x_plot, mu_plot, color='blue')
         plt.scatter(context_x_plot, context_y_plot, color='black')
-
 
         plt.fill_between(x_plot, y1=mu_plot + var_plot,
                          y2=mu_plot - var_plot, alpha=0.2)
