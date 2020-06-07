@@ -6,6 +6,16 @@ from torch.distributions.normal import Normal
 
 
 def select_data(contxt_idx, func_idx, xvalues, funcvalues, batch_size):
+    """
+
+    Parameters
+    ----------
+    batch_size:
+    funcvalues:
+    xvalues:
+    func_idx:
+    contxt_idx :
+    """
     num_contxt, num_trgt = len(contxt_idx), len(func_idx)
     context_x = xvalues[:, contxt_idx, :]
     context_y = funcvalues[:, contxt_idx, :]
@@ -18,15 +28,21 @@ def select_data(contxt_idx, func_idx, xvalues, funcvalues, batch_size):
     context_y_stacked = context_y.view(batch_size * num_contxt, -1)
     target_x_stacked = target_x.view(batch_size * num_trgt, -1)
 
-    return num_contxt, num_trgt, context_x, context_y, target_x, target_y, \
-           context_x_stacked, context_y_stacked, target_x_stacked
+    return num_contxt, num_trgt, target_x, target_y, context_x_stacked, \
+        context_y_stacked, target_x_stacked
 
 
-def get_sample_indexes(min_contx, max_contx, min_trgts, max_trgts,
-                       dim_observation, both=True):
-    """Samples number and indexes of context and target points during training and tests
+def get_sample_indexes(
+        min_contx, max_contx, min_trgts, max_trgts, dim_observation, both=True):
+    """Samples number and indexes of context and target points during training
+     and tests
     Parameters
     ----------
+    dim_observation
+    max_trgts
+    min_trgts
+    max_contx
+    min_contx
     both: boolean: Indicates whether both context and target points are required
     """
     num_contxt = np.random.randint(min_contx, max_contx)
@@ -41,6 +57,15 @@ def get_sample_indexes(min_contx, max_contx, min_trgts, max_trgts,
 
 
 def format_encoding(encoding, batch_size, num_contxt, num_trgt):
+    """
+
+    Parameters
+    ----------
+    num_trgt
+    num_contxt
+    batch_size
+    encoding :
+    """
     encoding = encoding.view(batch_size, num_contxt, -1)
     # averaging the encoding
     encoding_avg = encoding.mean(1)
@@ -85,7 +110,15 @@ class RegressionCNP:
             "min_contx": min_contx
         }
 
-    def _prep_data(self, xvalues, funcvalues, training=True):
+    def prep_data(self, xvalues, funcvalues, training=True):
+        """
+
+        Parameters
+        ---------
+        training
+        funcvalues
+        xvalues :
+        """
         if training:
             func_idx, contxt_idx = get_sample_indexes(
                 **self._sample_specs_kwargs,
@@ -103,11 +136,22 @@ class RegressionCNP:
                 contxt_idx, func_idx, xvalues, funcvalues, batch_size)
 
         return num_contxt, num_trgt, target_x, target_y, context_x_stacked, \
-            context_y_stacked, target_x_stacked, batch_size, contxt_idx
+               context_y_stacked, target_x_stacked, batch_size, contxt_idx
 
-    def _network_pass(self, context_x_stacked, context_y_stacked,
-                      target_x_stacked, batch_size, num_trgt, num_contxt):
+    def network_pass(
+            self, context_x_stacked, context_y_stacked, target_x_stacked,
+            batch_size, num_trgt, num_contxt):
+        """
 
+        Parameters
+        ----------
+        num_contxt
+        num_trgt
+        batch_size
+        target_x_stacked
+        context_y_stacked
+        context_x_stacked :
+        """
         # running the context values through the encoding
         encoding = self._encoder(context_x_stacked, context_y_stacked)
 
@@ -125,3 +169,23 @@ class RegressionCNP:
         distribution = Normal(loc=mu, scale=sigma_transformed)
 
         return mu, sigma_transformed, distribution
+
+    def prep_and_pass(self, xvalues, funcvalues, training=True):
+        num_contxt, num_trgt, target_x, target_y, context_x_stacked, \
+            context_y_stacked, target_x_stacked, batch_size, contxt_idx = \
+            self.prep_data(xvalues, funcvalues, training)
+
+        mu, sigma_transformed, distribution = self.network_pass(
+            context_x_stacked, context_y_stacked, target_x_stacked,
+            batch_size, num_trgt, num_contxt)
+
+        return contxt_idx, xvalues, funcvalues, target_y, target_x, mu, \
+            sigma_transformed, distribution
+
+    @property
+    def decoder(self):
+        return self._decoder
+
+    @property
+    def encoder(self):
+        return self._encoder

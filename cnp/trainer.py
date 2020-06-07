@@ -2,12 +2,6 @@
 import torch
 from torch import nn
 from torch import optim
-# from torch.distributions.multivariate_normal import MultivariateNormal
-from torch.distributions.normal import Normal
-from torch.utils import data
-
-import numpy as np
-import matplotlib.pyplot as plt
 from tqdm import tqdm
 from importlib import import_module
 
@@ -15,57 +9,8 @@ from importlib import import_module
 # I.E. from .networks import Encoder, Decoder
 # HOWEVER THIS IS NOT POSSIBLE WITH GOOGLE COLAB
 
-from .networks import Encoder, Decoder
 from .helpers import Helper, Plotter
-
-def get_sample_indexes(min_contx, max_contx, min_trgts, max_trgts,
-                       dim_observation, both=True):
-    """Samples number and indexes of context and target points during training and tests
-    Parameters
-    ----------
-    both: boolean: Indicates whether both context and target points are required
-    """
-    num_contxt = np.random.randint(min_contx, max_contx)
-    num_trgts = np.random.randint(num_contxt + min_trgts,
-                                  num_contxt + max_trgts)
-    trgts_idx = np.random.choice(np.arange(0, dim_observation), num_trgts)
-    contxt_idx = trgts_idx[:num_contxt]
-    if both:
-        return trgts_idx, contxt_idx
-    else:
-        return np.arange(0, dim_observation), contxt_idx
-
-
-def select_data(contxt_idx, func_idx, xvalues, funcvalues, batch_size):
-    num_contxt, num_trgt = len(contxt_idx), len(func_idx)
-    context_x = xvalues[:, contxt_idx, :]
-    context_y = funcvalues[:, contxt_idx, :]
-
-    target_y = funcvalues[:, func_idx, :]
-    target_x = xvalues[:, func_idx, :]
-
-    # the encoding is stacked to ensure a one dimensional input
-    context_x_stacked = context_x.view(batch_size * num_contxt, -1)
-    context_y_stacked = context_y.view(batch_size * num_contxt, -1)
-    target_x_stacked = target_x.view(batch_size * num_trgt, -1)
-
-    return num_contxt, num_trgt, context_x, context_y, target_x, target_y, \
-           context_x_stacked, context_y_stacked, target_x_stacked
-
-
-def format_encoding(encoding, batch_size, num_contxt, num_trgt):
-    print(encoding.shape)
-    encoding = encoding.view(batch_size, num_contxt, -1)
-    # averaging the encoding
-    encoding_avg = encoding.mean(1)
-    # we need to unsqueeze and repeat the embedding
-    # because we need to pair it with every target
-    encoding_avg = encoding_avg.unsqueeze(1)
-    encoding_exp = encoding_avg.repeat(1, num_trgt, 1)
-
-    encoding_stacked = encoding_exp.view(batch_size * num_trgt, -1)
-
-    return encoding_stacked
+from .cnp import RegressionCNP
 
 
 class RegressionTrainer:
@@ -127,36 +72,26 @@ class RegressionTrainer:
                  train_on_gpu=False,
                  print_after=2000,
                  datagenerator=None,
-                 data_as_curve=True,
                  range_x=None):
 
         super().__init__()
 
         self._n_epochs = n_epochs
         self._lr = lr
-        self._dim_observation = dim_observation
         self._train_on_gpu = train_on_gpu
         self._print_after = print_after
-        self._data_as_curve = data_as_curve
         self._datagenerator = datagenerator
-        self._encoder = Encoder(dimx, dimy, dimr, num_layers_encoder,
-                                num_neurons_encoder)
-        self._decoder = Decoder(dimx, num_neurons_encoder, dimout,
-                                num_layers_decoder, num_neurons_decoder,
-                                dropout)
-        self._sample_specs_kwargs = {
-            "min_trgts": min_funcs,
-            "max_trgts": max_funcs,
-            "max_contx": max_contx,
-            "min_contx": min_contx
-        }
+
+        self._cnp = RegressionCNP(
+            min_funcs, max_funcs, max_contx, min_contx,
+            dimx, dimy, dimr, num_layers_encoder, num_neurons_encoder, dimout,
+            num_layers_decoder, num_neurons_decoder, dropout)
 
         if self._train_on_gpu:
-            self._encoder.cuda()
-            self._decoder.cuda()
+            self._cnp.encoder.cuda()
+            self._cnp.decoder.cuda()
 
         if datagenerator:
-
             package_name, method_name = datagenerator.rsplit('.', 1)
             package = import_module(package_name)
             method = getattr(package, method_name)
@@ -166,53 +101,10 @@ class RegressionTrainer:
                 range_x=range_x,
                 steps=dim_observation)
 
-    def _prep_data(self, xvalues, funcvalues, training=True):
-
-        if training:
-            func_idx, contxt_idx = get_sample_indexes(
-                **self._sample_specs_kwargs,
-                dim_observation=self._dim_observation)
-        else:
-            func_idx, contxt_idx = get_sample_indexes(
-                **self._sample_specs_kwargs,
-                dim_observation=self._dim_observation,
-                both=False)
-        batch_size = xvalues.shape[0]
-
-        num_contxt, num_trgt, context_x, context_y, target_x, target_y, \
-        context_x_stacked, context_y_stacked, target_x_stacked = select_data(
-            contxt_idx, func_idx, xvalues,
-            funcvalues, batch_size)
-
-        return num_contxt, num_trgt, context_x, context_y, target_x, target_y, \
-               context_x_stacked, context_y_stacked, target_x_stacked, \
-               batch_size, func_idx, contxt_idx
-
-    def _network_pass(self, context_x_stacked, context_y_stacked,
-                      target_x_stacked, batch_size, num_trgt, num_contxt):
-
-        # running the context values through the encoding
-        encoding = self._encoder(context_x_stacked, context_y_stacked)
-
-        encoding_stacked = format_encoding(encoding, batch_size, num_contxt,
-                                           num_trgt)
-        decoding = self._decoder(target_x_stacked, encoding_stacked)
-        decoding_rshp = decoding.view(batch_size, num_trgt, -1)
-
-        mu = decoding_rshp[:, :, 0].unsqueeze(-1)
-        sigma = decoding_rshp[:, :, 1].unsqueeze(-1)
-
-        # transforming the variance to ensure that it forms a positive
-        # definite covariance matrix
-        sigma_transformed = Helper.transform_var(sigma)
-        distribution = Normal(loc=mu, scale=sigma_transformed)
-
-        return mu, sigma_transformed, distribution
-
     def _validation_run(self, current_epoch, plotting, valiloader=None):
 
-        self._encoder.eval()
-        self._decoder.eval()
+        self._cnp.encoder.eval()
+        self._cnp.decoder.eval()
 
         running_vali_loss = 0
 
@@ -221,32 +113,16 @@ class RegressionTrainer:
             for xvalues, funcvalues in valiloader:
 
                 if self._train_on_gpu:
-
                     xvalues, funcvalues = xvalues.cuda(), funcvalues.cuda()
-
-                if self._data_as_curve:
-                    num_contxt, num_trgt, context_x, context_y, target_x, \
-                    target_y, context_x_stacked, context_y_stacked, \
-                    target_x_stacked, batch_size, func_idx, \
-                    contxt_idx = self._prep_data(
-                        xvalues, funcvalues, training=False)
 
                 if not self._datagenerator:
                     xvalues = xvalues.unsqueeze(0)
                     funcvalues = funcvalues[None, :, None]
 
-                    # i dont need context_x, context_y or funcidx
-
-                    num_contxt, num_trgt, context_x, context_y, target_x, \
-                    target_y, context_x_stacked, context_y_stacked, \
-                    target_x_stacked, batch_size, func_idx, \
-                    contxt_idx = self._prep_data(
+                contxt_idx, xvalues, funcvalues, target_y, target_x, mu, \
+                    sigma_transformed, distribution = \
+                    self._cnp.prep_and_pass(
                         xvalues, funcvalues, training=False)
-
-
-                mu, sigma_transformed, distribution = self._network_pass(
-                    context_x_stacked, context_y_stacked,
-                    target_x_stacked, batch_size, num_trgt, num_contxt)
 
                 vali_loss = distribution.log_prob(target_y)
                 vali_loss = -torch.mean(vali_loss)
@@ -254,7 +130,8 @@ class RegressionTrainer:
             else:
                 mean_vali_loss = running_vali_loss / len(valiloader)
                 print(
-                    f' Validation loss after {current_epoch} equals {mean_vali_loss}')
+                    f' Validation loss after {current_epoch} equals\
+                     {mean_vali_loss}')
                 if plotting:
                     Plotter.plot_run(contxt_idx, xvalues,
                                      funcvalues, target_y, target_x, mu,
@@ -277,8 +154,8 @@ class RegressionTrainer:
         is generated on the fly or read in.
 
         """
-        self._encoder.train()
-        self._decoder.train()
+        self._cnp.encoder.train()
+        self._cnp.decoder.train()
 
         if not self._datagenerator:
             X_train, y_train, X_vali, y_vali = Helper.read_and_transform(
@@ -288,10 +165,9 @@ class RegressionTrainer:
                 seed=kwargs['seed']
             )
 
-        optimizer = optim.Adam(self._decoder.parameters())
+        optimizer = optim.Adam(self._cnp.decoder.parameters())
         mean_epoch_loss = []
         mean_vali_loss = []
-
 
         for epoch in tqdm(range(self._n_epochs), total=self._n_epochs):
 
@@ -320,8 +196,6 @@ class RegressionTrainer:
                 valiloader = Helper.create_loader(
                     X_vali, y_vali, batch_size_vali)
 
-            #  get sample indexes
-
             else:
 
                 # TODO this should happen in data generation
@@ -345,18 +219,10 @@ class RegressionTrainer:
 
                 optimizer.zero_grad()
 
-                # TODO this should be in conditional neural process
-                num_contxt, num_trgt, context_x, context_y, target_x, \
-                target_y, context_x_stacked, context_y_stacked, \
-                target_x_stacked, batch_size, func_idx, \
-                contxt_idx = self._prep_data(xvalues,
-                                             funcvalues,
-                                             training=True)
-
-                # TODO this should be in conditional neural process
-                mu, sigma_transformed, distribution = self._network_pass(
-                    context_x_stacked, context_y_stacked,
-                    target_x_stacked, batch_size, num_trgt, num_contxt)
+                contxt_idx, xvalues, funcvalues, target_y, target_x, mu, \
+                    sigma_transformed, distribution = \
+                    self._cnp.prep_and_pass(
+                        xvalues, funcvalues, training=False)
 
                 loss = distribution.log_prob(target_y)
                 loss = -torch.mean(loss)
@@ -373,34 +239,37 @@ class RegressionTrainer:
                     if valiloader:
                         mean_vali_loss.append(
                             self._validation_run(epoch, plotting, valiloader))
-                        self._encoder.train(), self._decoder.train()
+                        self._cnp.encoder.train(), self._cnp.decoder.train()
         if plotting:
             Plotter.plot_training_progress(mean_epoch_loss, mean_vali_loss,
                                            interval=self._print_after)
 
-        return self._decoder.state_dict()
+        return self._cnp.decoder.state_dict()
+
     # TODO this needs to be updated
     def run_test(self, state_dict, testloader, plotting=False):
         """This function performs one test run
                 Parameters
                 ----------
-                testloader: torch.utils.data.DataLoader: iterable object that holds validation data
+                testloader: torch.utils.data.DataLoader: iterable object that
+                 holds validation data
 
                 state_dict: dictionary: pytorch dictionary to load weights from
         """
         running_mse = 0
         # state_dict = torch.load(file_path_weights)
-        self._decoder.load_state_dict(state_dict)
+        self._cnp.decoder.load_state_dict(state_dict)
 
-        self._encoder.eval()
-        self._decoder.eval()
+        self._cnp.encoder.eval()
+        self._cnp.decoder.eval()
 
         with torch.no_grad():
 
             for xvalues, funcvalues in testloader:
 
-                batch_size, target_x, target_y, context_x, contxt_idx, context_y, mu, sigma_transformed, distribution = self._prep_data(
-                    xvalues, funcvalues, training=False)
+                batch_size, target_x, target_y, context_x, contxt_idx,\
+                    context_y, mu, sigma_transformed, distribution = \
+                    self._cnp.prep_data(xvalues, funcvalues, training=False)
                 mse = ((mu - target_y) ** 2).mean(1).mean(0)
                 running_mse += mse.item()
                 if plotting:
