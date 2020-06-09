@@ -20,7 +20,6 @@
       "train_on_gpu": false,
       "print_after": 1000,
       "datagenerator": null,
-      "data_as_curve": false,
       "range_x": null
     },
     "training_params": {
@@ -38,7 +37,6 @@
   },
   "multiple_functions": {
     "experiment_params": {
-      "data_as_curve": true,
       "datagenerator": "cnp.datageneration.PolynomialRegression",
       "dim_observation": 50,
       "dimout": 2,
