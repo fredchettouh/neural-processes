@@ -90,9 +90,10 @@ class Plotter:
         title = "Development of training and validation loss"
         xlabel = "Epoch"
         ylabel = "Negative log probabability "
+
         xvalues = np.arange(0, len(training_losses), interval)
-        plt.plot(xvalues, training_losses[::interval], label='training loss')
-        plt.plot(xvalues, vali_losses, label='validation loss')
+        plt.plot(xvalues[1:], training_losses[::interval][1:], label='training loss')
+        plt.plot(xvalues[1:], vali_losses[1:], label='validation loss')
         plt.title(title)
         plt.xlabel(xlabel)
         plt.ylabel(ylabel)

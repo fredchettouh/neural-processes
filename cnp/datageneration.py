@@ -2,6 +2,7 @@
 
 
 ## Todo: rewrite kernel so that it works for higher order tensors
+# Todo: add seeds to make experiments comparable
 
 
 import torch
@@ -39,7 +40,6 @@ class DataGenerator:
 
 class GaussianProcess(DataGenerator):
     pass
-
 
     def _rbf_kernel(self, length_scale, gamma):
         x = self._create_x()

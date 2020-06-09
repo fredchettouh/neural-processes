@@ -120,7 +120,7 @@ class RegressionTrainer:
                     funcvalues = funcvalues[None, :, None]
 
                 contxt_idx, xvalues, funcvalues, target_y, target_x, mu, \
-                    sigma_transformed, distribution = \
+                sigma_transformed, distribution = \
                     self._cnp.prep_and_pass(
                         xvalues, funcvalues, training=False)
 
@@ -165,7 +165,10 @@ class RegressionTrainer:
                 seed=kwargs['seed']
             )
 
-        optimizer = optim.Adam(self._cnp.decoder.parameters())
+        optimizer = optim.Adam(list(self._cnp._encoder.parameters()) +
+                               list(self._cnp.decoder.parameters()))
+
+
         mean_epoch_loss = []
         mean_vali_loss = []
 
@@ -220,7 +223,7 @@ class RegressionTrainer:
                 optimizer.zero_grad()
 
                 contxt_idx, xvalues, funcvalues, target_y, target_x, mu, \
-                    sigma_transformed, distribution = \
+                sigma_transformed, distribution = \
                     self._cnp.prep_and_pass(
                         xvalues, funcvalues, training=False)
 
@@ -231,9 +234,10 @@ class RegressionTrainer:
                 loss.backward()
                 optimizer.step()
 
+
+
             else:
                 mean_epoch_loss.append(running_loss / len(trainloader))
-
                 if epoch % self._print_after == 0:
                     print(f'Mean loss at epoch {epoch} : {mean_epoch_loss[-1]}')
                     if valiloader:
@@ -267,8 +271,8 @@ class RegressionTrainer:
 
             for xvalues, funcvalues in testloader:
 
-                batch_size, target_x, target_y, context_x, contxt_idx,\
-                    context_y, mu, sigma_transformed, distribution = \
+                batch_size, target_x, target_y, context_x, contxt_idx, \
+                context_y, mu, sigma_transformed, distribution = \
                     self._cnp.prep_data(xvalues, funcvalues, training=False)
                 mse = ((mu - target_y) ** 2).mean(1).mean(0)
                 running_mse += mse.item()
