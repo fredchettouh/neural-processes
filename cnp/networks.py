@@ -26,6 +26,14 @@ def create_linear_layer(layer_specs, index, dropout=0):
         return [lin_layer, relu_layer]
 
 
+def mean_aggregation(encoding):
+    encoding_avg = encoding.mean(1)
+    encoding_avg = encoding_avg.unsqueeze(1)
+    batch_size, dim_embedding, _ = encoding_avg.size()
+    encoding_avg_stacked = encoding_avg.view(batch_size * dim_embedding, -1)
+    return encoding_avg_stacked
+
+
 class Encoder(nn.Module):
     """This class maps each x_i, y_i context point to a representation r_i
     To learn this Representation we are using a Multi Layer Perceptron
@@ -52,7 +60,6 @@ class Encoder(nn.Module):
     def __init__(self, dimx: int, dimy: int, dimr: int,
                  num_layers: int, num_neurons: int,
                  dropout: float = 0) -> None:
-
         super().__init__()
 
         self._dimx = dimx
@@ -113,7 +120,9 @@ class Decoder(nn.Module):
 
     num_neurons: int: Number of Neurons for each hidden layer
     """
-    def __init__(self, dimx, dimr, dimparam, num_layers, num_neurons, dropout=0):
+
+    def __init__(self, dimx, dimr, dimparam, num_layers, num_neurons,
+                 dropout=0):
         super().__init__()
 
         self._dimx = dimx
@@ -128,7 +137,7 @@ class Decoder(nn.Module):
             _first_layer.append(nn.Dropout(p=dropout))
 
         _hidden_layers = [
-            create_linear_layer(self._hidden_layers,i , dropout)
+            create_linear_layer(self._hidden_layers, i, dropout)
             for i in range(len(self._hidden_layers) - 2)]
         _hidden_layers_flat = [
             element for inner in _hidden_layers for element in inner]
@@ -150,7 +159,7 @@ class Decoder(nn.Module):
 class MLPAggregator(nn.Module):
     def __init__(
             self,
-            maxcontxt: int,
+            insize: int,
             dimout: int = 1,
             num_layers: int = 3,
             num_neurons: int = 128,
@@ -166,12 +175,12 @@ class MLPAggregator(nn.Module):
         dropout :
         """
         super().__init__()
-        self._maxcontxt = maxcontxt
+        self._insize = insize
         self._dimout = dimout
         self._hidden_layers = [num_neurons for _ in range(num_layers)]
 
         _first_layer = [
-            nn.Linear(self._dimr, self._hidden_layers[0]),
+            nn.Linear(self._insize, self._hidden_layers[0]),
             nn.ReLU()]
         _hidden_layers = [
             create_linear_layer(self._hidden_layers, i, dropout)
@@ -188,7 +197,7 @@ class MLPAggregator(nn.Module):
 
     def _zero_padding(self, embedding):
         batch_size, n_observations, n_features = embedding.size()
-        zero_target = torch.zeros(batch_size, n_observations, self._maxcontxt)
+        zero_target = torch.zeros(batch_size, n_observations, self._insize)
         zero_target[:, :, :n_features] = embedding
         return zero_target
 
@@ -200,13 +209,16 @@ class MLPAggregator(nn.Module):
 
         """
         padded_embedding = self._zero_padding(embedding)
+        batch_size, n_features, _ = padded_embedding.size()
+        padded_embedding_stacked = padded_embedding.view(
+            batch_size * n_features, -1)
 
-        return self._process_input(padded_embedding)
+        return self._process_input(padded_embedding_stacked)
+
 
 if __name__ == "__main__":
     encoder = Encoder(dimx=1, dimy=1, dimr=128,
-                      num_layers=4, num_neurons=128,dropout=0)
+                      num_layers=4, num_neurons=128, dropout=0)
     decoder = Decoder(dimx=1, dimr=128, dimparam=2, num_layers=3,
                       num_neurons=128, dropout=0.2)
     print(encoder, decoder)
-

@@ -72,6 +72,8 @@ class RegressionTrainer:
                  num_neurons_encoder=128,
                  num_layers_decoder=2,
                  num_neurons_decoder=128,
+                 num_layers_aggr=None,
+                 num_neurons_aggr=None,
                  dropout=0,
                  train_on_gpu=False,
                  print_after=2000,
@@ -88,10 +90,29 @@ class RegressionTrainer:
         self._datagenerator = datagenerator
         self._seed = seed
 
+        aggregation_kwargs = {
+            "insize": max_contx,
+            "dimout": 1,
+            "num_layers": num_layers_aggr,
+            "num_neurons": num_neurons_aggr,
+            "dropout": dropout
+        }
+
         self._cnp = RegressionCNP(
-            min_funcs, max_funcs, max_contx, min_contx,
-            dimx, dimy, dimr, num_layers_encoder, num_neurons_encoder, dimout,
-            num_layers_decoder, num_neurons_decoder, dropout)
+            min_funcs=min_funcs,
+            max_funcs=max_funcs,
+            max_contx=max_contx,
+            min_contx=min_contx,
+            dimx=dimx,
+            dimy=dimy,
+            dimr=dimr,
+            num_layers_encoder=num_layers_encoder,
+            num_neurons_encoder=num_neurons_encoder,
+            dimout=dimout,
+            num_layers_decoder=num_layers_decoder,
+            num_neurons_decoder=num_neurons_decoder,
+            aggregation_kwargs=aggregation_kwargs,
+            dropout=dropout)
 
         Helper.set_seed(self._seed)
         self._cnp.encoder.apply(Helper.init_weights)
@@ -186,8 +207,14 @@ class RegressionTrainer:
                 seed=kwargs['seed']
             )
 
-        optimizer = optim.Adam(list(self._cnp._encoder.parameters()) +
-                               list(self._cnp.decoder.parameters()))
+        if self._cnp.aggregator:
+
+            optimizer = optim.Adam(list(self._cnp.encoder.parameters()) +
+                                   list(self._cnp.aggregator.parameters()) +
+                                   list(self._cnp.decoder.parameters()))
+        else:
+            optimizer = optim.Adam(list(self._cnp.encoder.parameters()) +
+                                   list(self._cnp.decoder.parameters()))
 
         mean_epoch_loss = []
         mean_vali_loss = []
@@ -245,7 +272,7 @@ class RegressionTrainer:
                 contxt_idx, xvalues, funcvalues, target_y, target_x, mu, \
                 sigma_transformed, distribution = \
                     self._cnp.prep_and_pass(
-                        xvalues, funcvalues, training=False)
+                        xvalues, funcvalues, training=True)
 
                 loss = distribution.log_prob(target_y)
                 loss = -torch.mean(loss)

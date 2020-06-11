@@ -1,8 +1,8 @@
-from .networks import Encoder
-from .networks import Decoder
+from .networks import Encoder, Decoder, MLPAggregator, mean_aggregation
 from .helpers import Helper
 import numpy as np
 from torch.distributions.normal import Normal
+import torch
 
 
 def select_data(contxt_idx, func_idx, xvalues, funcvalues, batch_size):
@@ -29,7 +29,7 @@ def select_data(contxt_idx, func_idx, xvalues, funcvalues, batch_size):
     target_x_stacked = target_x.view(batch_size * num_trgt, -1)
 
     return num_contxt, num_trgt, target_x, target_y, context_x_stacked, \
-        context_y_stacked, target_x_stacked
+           context_y_stacked, target_x_stacked
 
 
 def get_sample_indexes(
@@ -56,25 +56,20 @@ def get_sample_indexes(
         return np.arange(0, dim_observation), contxt_idx
 
 
-def format_encoding(encoding, batch_size, num_contxt, num_trgt):
+def format_encoding(encoding, batch_size, num_trgt):
     """
 
     Parameters
     ----------
+    embedding_dim
     num_trgt
-    num_contxt
     batch_size
     encoding :
     """
-    encoding = encoding.view(batch_size, num_contxt, -1)
-    # averaging the encoding
-    # todo but a function here, i.e. neural network
-    encoding_avg = encoding.mean(1)
-    # we need to unsqueeze and repeat the embedding
+    encoding = encoding.unsqueeze(1)
+
     # because we need to pair it with every target
-    encoding_avg = encoding_avg.unsqueeze(1)
-    print(encoding_avg.shape)
-    encoding_exp = encoding_avg.repeat(1, num_trgt, 1)
+    encoding_exp = encoding.repeat(1, num_trgt, 1)
     encoding_stacked = encoding_exp.view(batch_size * num_trgt, -1)
 
     return encoding_stacked
@@ -95,6 +90,7 @@ class RegressionCNP:
             dimout,
             num_layers_decoder,
             num_neurons_decoder,
+            aggregation_kwargs,
             dropout=0):
         super().__init__()
 
@@ -103,6 +99,12 @@ class RegressionCNP:
         self._decoder = Decoder(dimx, num_neurons_encoder, dimout,
                                 num_layers_decoder, num_neurons_decoder,
                                 dropout)
+
+        if aggregation_kwargs['num_layers'] and\
+                aggregation_kwargs['num_neurons']:
+            self._aggregator = MLPAggregator(**aggregation_kwargs)
+        else:
+            self._aggregator = None
 
         self._sample_specs_kwargs = {
             "min_trgts": min_funcs,
@@ -124,6 +126,7 @@ class RegressionCNP:
             func_idx, contxt_idx = get_sample_indexes(
                 **self._sample_specs_kwargs,
                 dim_observation=xvalues.shape[1])
+
         else:
             func_idx, contxt_idx = get_sample_indexes(
                 **self._sample_specs_kwargs,
@@ -132,7 +135,7 @@ class RegressionCNP:
         batch_size = xvalues.shape[0]
 
         num_contxt, num_trgt, target_x, target_y, context_x_stacked, \
-            context_y_stacked, target_x_stacked = \
+        context_y_stacked, target_x_stacked = \
             select_data(
                 contxt_idx, func_idx, xvalues, funcvalues, batch_size)
 
@@ -156,8 +159,21 @@ class RegressionCNP:
         # running the context values through the encoding
         encoding = self._encoder(context_x_stacked, context_y_stacked)
 
-        encoding_stacked = format_encoding(encoding, batch_size, num_contxt,
-                                           num_trgt)
+        # shaping it back to batch_view dimensions to decouple it
+        # from type of aggregator (i.e. mean, NN, RNN)
+        encoding_batch_view = encoding.view(batch_size, num_contxt, -1)
+
+
+        if self._aggregator:
+            encoding_batch_view = torch.transpose(encoding_batch_view, 1,2)
+            aggregated_enconding = self._aggregator(encoding_batch_view)
+        else:
+            aggregated_enconding = mean_aggregation(encoding_batch_view)
+
+        encoding_stacked = format_encoding(
+            aggregated_enconding, batch_size, num_trgt)
+
+
         decoding = self._decoder(target_x_stacked, encoding_stacked)
         decoding_rshp = decoding.view(batch_size, num_trgt, -1)
 
@@ -173,14 +189,14 @@ class RegressionCNP:
 
     def prep_and_pass(self, xvalues, funcvalues, training=True):
         num_contxt, num_trgt, target_x, target_y, context_x_stacked, \
-            context_y_stacked, target_x_stacked, batch_size, contxt_idx = \
+        context_y_stacked, target_x_stacked, batch_size, contxt_idx = \
             self.prep_data(xvalues, funcvalues, training)
         mu, sigma_transformed, distribution = self.network_pass(
             context_x_stacked, context_y_stacked, target_x_stacked,
             batch_size, num_trgt, num_contxt)
 
         return contxt_idx, xvalues, funcvalues, target_y, target_x, mu, \
-            sigma_transformed, distribution
+               sigma_transformed, distribution
 
     @property
     def decoder(self):
@@ -189,3 +205,7 @@ class RegressionCNP:
     @property
     def encoder(self):
         return self._encoder
+
+    @property
+    def aggregator(self):
+        return self._aggregator
