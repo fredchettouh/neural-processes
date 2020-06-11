@@ -68,12 +68,13 @@ def format_encoding(encoding, batch_size, num_contxt, num_trgt):
     """
     encoding = encoding.view(batch_size, num_contxt, -1)
     # averaging the encoding
+    # todo but a function here, i.e. neural network
     encoding_avg = encoding.mean(1)
     # we need to unsqueeze and repeat the embedding
     # because we need to pair it with every target
     encoding_avg = encoding_avg.unsqueeze(1)
+    print(encoding_avg.shape)
     encoding_exp = encoding_avg.repeat(1, num_trgt, 1)
-
     encoding_stacked = encoding_exp.view(batch_size * num_trgt, -1)
 
     return encoding_stacked
@@ -174,7 +175,6 @@ class RegressionCNP:
         num_contxt, num_trgt, target_x, target_y, context_x_stacked, \
             context_y_stacked, target_x_stacked, batch_size, contxt_idx = \
             self.prep_data(xvalues, funcvalues, training)
-
         mu, sigma_transformed, distribution = self.network_pass(
             context_x_stacked, context_y_stacked, target_x_stacked,
             batch_size, num_trgt, num_contxt)

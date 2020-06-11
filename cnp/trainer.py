@@ -4,6 +4,7 @@ from torch import nn
 from torch import optim
 from tqdm import tqdm
 from importlib import import_module
+import numpy as np
 
 # custom imports - WE SHOULD USE RELATIVE IMPORTS HERE
 # I.E. from .networks import Encoder, Decoder
@@ -12,6 +13,8 @@ from importlib import import_module
 from .helpers import Helper, Plotter
 from .cnp import RegressionCNP
 
+# TODO: optimizer has to become variable
+# else I cannot pass different aggregators to it
 
 class RegressionTrainer:
     """
@@ -29,7 +32,8 @@ class RegressionTrainer:
 
     min_contx: int: Minimum number of context values to sample
 
-    dim_observation: int: Number of observations of each "joint target" that means of each function
+    dim_observation: int: Number of observations of each "joint target" that
+    =means of each function
 
     dimx: int: Dimension of each x value
 
@@ -72,7 +76,8 @@ class RegressionTrainer:
                  train_on_gpu=False,
                  print_after=2000,
                  datagenerator=None,
-                 range_x=None):
+                 range_x=None,
+                 seed=None):
 
         super().__init__()
 
@@ -81,11 +86,16 @@ class RegressionTrainer:
         self._train_on_gpu = train_on_gpu
         self._print_after = print_after
         self._datagenerator = datagenerator
+        self._seed = seed
 
         self._cnp = RegressionCNP(
             min_funcs, max_funcs, max_contx, min_contx,
             dimx, dimy, dimr, num_layers_encoder, num_neurons_encoder, dimout,
             num_layers_decoder, num_neurons_decoder, dropout)
+
+        Helper.set_seed(self._seed)
+        self._cnp.encoder.apply(Helper.init_weights)
+        self._cnp.decoder.apply(Helper.init_weights)
 
         if self._train_on_gpu:
             self._cnp.encoder.cuda()
@@ -102,6 +112,7 @@ class RegressionTrainer:
                 steps=dim_observation)
 
     def _validation_run(self, current_epoch, plotting, valiloader=None):
+        Helper.set_seed(self._seed)
 
         self._cnp.encoder.eval()
         self._cnp.decoder.eval()
@@ -120,7 +131,7 @@ class RegressionTrainer:
                     funcvalues = funcvalues[None, :, None]
 
                 contxt_idx, xvalues, funcvalues, target_y, target_x, mu, \
-                sigma_transformed, distribution = \
+                    sigma_transformed, distribution = \
                     self._cnp.prep_and_pass(
                         xvalues, funcvalues, training=False)
 
@@ -128,10 +139,18 @@ class RegressionTrainer:
                 vali_loss = -torch.mean(vali_loss)
                 running_vali_loss += vali_loss.item()
             else:
+
+                # all values (x, y, loss, are the values of the last iteration
+                # Therefore this function is also plotted
+
                 mean_vali_loss = running_vali_loss / len(valiloader)
                 print(
-                    f' Validation loss after {current_epoch} equals\
-                     {mean_vali_loss}')
+                    f'Mean Validation loss after {current_epoch} equals\
+                     {round(mean_vali_loss, 3)}\n')
+
+                print(f'Validation loss for the function plotted: \
+                {round(vali_loss.item(), 3)}')
+
                 if plotting:
                     Plotter.plot_run(contxt_idx, xvalues,
                                      funcvalues, target_y, target_x, mu,
@@ -154,6 +173,8 @@ class RegressionTrainer:
         is generated on the fly or read in.
 
         """
+        Helper.set_seed(self._seed)
+
         self._cnp.encoder.train()
         self._cnp.decoder.train()
 
@@ -168,7 +189,6 @@ class RegressionTrainer:
         optimizer = optim.Adam(list(self._cnp._encoder.parameters()) +
                                list(self._cnp.decoder.parameters()))
 
-
         mean_epoch_loss = []
         mean_vali_loss = []
 
@@ -178,22 +198,22 @@ class RegressionTrainer:
 
             if self._datagenerator:  # generate data on the fly for every epoch
 
-                kwargs['train'] = True
+                kwargs['purpose'] = 'train'
 
                 X_train, y_train = self._datagenerator.generate_curves(
                     **kwargs)
 
-                y_train = Helper.list_np_to_sensor(y_train)
+                y_train = Helper.list_np_to_tensor(y_train)
                 X_train = X_train.repeat(y_train.shape[0], 1, 1)
 
                 trainloader = Helper.create_loader(
                     X_train, y_train, batch_size_train)
 
-                kwargs['train'] = False
+                kwargs['purpose'] = 'vali'
 
                 X_vali, y_vali = self._datagenerator.generate_curves(**kwargs)
 
-                y_vali = Helper.list_np_to_sensor(y_vali)
+                y_vali = Helper.list_np_to_tensor(y_vali)
                 X_vali = X_vali.repeat(y_vali.shape[0], 1, 1)
 
                 valiloader = Helper.create_loader(
@@ -229,17 +249,16 @@ class RegressionTrainer:
 
                 loss = distribution.log_prob(target_y)
                 loss = -torch.mean(loss)
-                running_loss += loss
+                running_loss += loss.item()
 
                 loss.backward()
                 optimizer.step()
 
-
-
             else:
                 mean_epoch_loss.append(running_loss / len(trainloader))
                 if epoch % self._print_after == 0:
-                    print(f'Mean loss at epoch {epoch} : {mean_epoch_loss[-1]}')
+                    print(f'Mean training loss at epoch {epoch} : \
+                        {round(mean_epoch_loss[-1], 3)}')
                     if valiloader:
                         mean_vali_loss.append(
                             self._validation_run(epoch, plotting, valiloader))
@@ -248,38 +267,57 @@ class RegressionTrainer:
             Plotter.plot_training_progress(mean_epoch_loss, mean_vali_loss,
                                            interval=self._print_after)
 
-        return self._cnp.decoder.state_dict()
+        return self._cnp.encoder.state_dict(), self._cnp.decoder.state_dict()
 
-    # TODO this needs to be updated
-    def run_test(self, state_dict, testloader, plotting=False):
+    def run_test(self, state_dict_encoder, state_dict_decoder,
+                 batch_size_test, plotting, kwargs):
         """This function performs one test run
                 Parameters
                 ----------
+                state_dict_decoder
+                state_dict_encoder
+                plotting
+                batch_size_test
+                kwargs
                 testloader: torch.utils.data.DataLoader: iterable object that
                  holds validation data
 
                 state_dict: dictionary: pytorch dictionary to load weights from
         """
-        running_mse = 0
-        # state_dict = torch.load(file_path_weights)
-        self._cnp.decoder.load_state_dict(state_dict)
+        np.random.seed(self._seed)
+        self._cnp.encoder.load_state_dict(state_dict_encoder)
+        self._cnp.decoder.load_state_dict(state_dict_decoder)
 
         self._cnp.encoder.eval()
         self._cnp.decoder.eval()
 
+        if self._datagenerator:  # generate data on the fly for every epoch
+
+            kwargs['purpose'] = 'test'
+            X_test, y_test = self._datagenerator.generate_curves(
+                **kwargs)
+
+            y_test = Helper.list_np_to_tensor(y_test)
+            X_test = X_test.repeat(y_test.shape[0], 1, 1)
+
+            testloader = Helper.create_loader(
+                X_test, y_test, batch_size_test)
+        running_mse = 0
         with torch.no_grad():
 
             for xvalues, funcvalues in testloader:
 
-                batch_size, target_x, target_y, context_x, contxt_idx, \
-                context_y, mu, sigma_transformed, distribution = \
-                    self._cnp.prep_data(xvalues, funcvalues, training=False)
+                contxt_idx, xvalues, funcvalues, target_y, target_x, mu, \
+                sigma_transformed, distribution = \
+                    self._cnp.prep_and_pass(
+                        xvalues, funcvalues, training=False)
+
                 mse = ((mu - target_y) ** 2).mean(1).mean(0)
                 running_mse += mse.item()
                 if plotting:
-                    self.plot_run(contxt_idx, xvalues, funcvalues,
-                                  target_y, target_x, mu,
-                                  sigma_transformed)
+                    Plotter.plot_run(
+                        contxt_idx, xvalues, funcvalues, target_y, target_x, mu,
+                        sigma_transformed)
             else:
                 test_set_mse = running_mse / len(testloader)
                 return test_set_mse

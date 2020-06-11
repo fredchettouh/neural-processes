@@ -86,7 +86,6 @@ class Encoder(nn.Module):
         y_values: torch.Tensor: Shape (batch_size, dimy)
         """
         input_as_pairs = torch.cat((x_values, y_values), dim=1)
-
         return self._process_input(input_as_pairs)
 
 
@@ -147,6 +146,62 @@ class Decoder(nn.Module):
 
         return self._process_input(input_as_pairs)
 
+
+class MLPAggregator(nn.Module):
+    def __init__(
+            self,
+            maxcontxt: int,
+            dimout: int = 1,
+            num_layers: int = 3,
+            num_neurons: int = 128,
+            dropout: float = 0):
+        """
+
+        Parameters
+        ----------
+        maxcontxt :
+        dimout :
+        num_layers :
+        num_neurons :
+        dropout :
+        """
+        super().__init__()
+        self._maxcontxt = maxcontxt
+        self._dimout = dimout
+        self._hidden_layers = [num_neurons for _ in range(num_layers)]
+
+        _first_layer = [
+            nn.Linear(self._dimr, self._hidden_layers[0]),
+            nn.ReLU()]
+        _hidden_layers = [
+            create_linear_layer(self._hidden_layers, i, dropout)
+            for i in range(len(self._hidden_layers) - 2)]
+        _hidden_layers_flat = [
+            element for inner in _hidden_layers for element in inner]
+
+        _last_layer = [
+            nn.Linear(self._hidden_layers[-2], self._dimout)]
+
+        self._layers = _first_layer + _hidden_layers_flat + _last_layer
+
+        self._process_input = nn.Sequential(*self._layers)
+
+    def _zero_padding(self, embedding):
+        batch_size, n_observations, n_features = embedding.size()
+        zero_target = torch.zeros(batch_size, n_observations, self._maxcontxt)
+        zero_target[:, :, :n_features] = embedding
+        return zero_target
+
+    def forward(self, embedding):
+        """
+        Parameters
+        ----------
+        embedding: torch.Tensor: Shape (batch_size*num_contxt, dimr)
+
+        """
+        padded_embedding = self._zero_padding(embedding)
+
+        return self._process_input(padded_embedding)
 
 if __name__ == "__main__":
     encoder = Encoder(dimx=1, dimy=1, dimr=128,

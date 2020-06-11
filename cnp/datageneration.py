@@ -57,16 +57,20 @@ class GaussianProcess(DataGenerator):
         kernel = torch.exp(-gamma * ((x_res + y_res - 2 * xy) / length_scale))
         return x, kernel
 
-    def generate_curves(self, num_instances_train=10, num_instances_vali=10,
-                        noise=1e-4, length_scale=0.4, gamma=1, train=True):
+    def generate_curves(self, noise=1e-4, length_scale=0.4, gamma=1,
+                        num_instances_train=None, num_instances_vali=None,
+                        num_instances_test=None, purpose=None):
         x_values, kernel = self._rbf_kernel(length_scale, gamma)
         kernel = kernel + torch.eye(self._steps) * noise
         cholesky_decomp = torch.cholesky(kernel)
         datasets = []
-        if train:
+        if purpose == 'train':
             num_instances = num_instances_train
-        else:
+        elif purpose == 'vali':
             num_instances = num_instances_vali
+        elif purpose == 'test':
+            num_instances = num_instances_test
+
 
         for _ in range(num_instances):
             # creating as many standard
@@ -79,14 +83,19 @@ class GaussianProcess(DataGenerator):
 class PolynomialRegression(DataGenerator):
     pass
 
-    def generate_curves(self, mu=0, sigma=2, num_instances_train=64,
-                        num_instances_vali=10, train=True):
+    def generate_curves(self, mu=0, sigma=2, num_instances_train=None,
+                        num_instances_vali=None, num_instances_test=None,
+                        purpose=None, seed=None):
         x_values = self._create_x().float()
+
         datasets = []
-        if train:
+        if purpose == 'train':
             num_instances = num_instances_train
-        else:
+        elif purpose == 'vali':
             num_instances = num_instances_vali
+        elif purpose == 'test':
+            num_instances = num_instances_test
+
         for i in range(num_instances):
             b1 = np.random.uniform(-3, 3)
             b2 = np.random.uniform(-3, 3)

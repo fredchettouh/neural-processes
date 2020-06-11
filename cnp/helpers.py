@@ -1,5 +1,9 @@
 import torch
 from torch.nn.functional import softplus
+from torch import nn
+import os
+import random
+
 import numpy as np
 import matplotlib.pyplot as plt
 from torch.utils import data
@@ -63,7 +67,7 @@ class Helper:
         return dataloader
 
     @staticmethod
-    def list_np_to_sensor(list_of_arrays, stack=True):
+    def list_np_to_tensor(list_of_arrays, stack=True):
         if stack:
             return torch.stack([array for array in list_of_arrays])
         else:
@@ -82,6 +86,29 @@ class Helper:
 
         return transformed_variance
 
+    @staticmethod
+    def init_weights(model):
+        """
+
+        Parameters
+        ----------
+        model :
+        """
+        x = 0.5
+        if type(model) == nn.Linear:
+
+            nn.init.uniform_(model.weight, -0.05, 0.05)
+            nn.init.uniform_(model.bias, -0.05, 0.05)
+
+    @staticmethod
+    def set_seed(seed):
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+        np.random.seed(seed)
+        random.seed(seed)
+        os.environ['PYTHONHASHSEED'] = str(seed)
 
 class Plotter:
 
