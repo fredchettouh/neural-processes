@@ -25,13 +25,21 @@ def create_linear_layer(layer_specs, index, dropout=0):
     else:
         return [lin_layer, relu_layer]
 
-def mean_aggregation(encoding):
-    encoding_avg = encoding.mean(1)
-    encoding_avg = encoding_avg.unsqueeze(1)
-    batch_size, dim_embedding, _ = encoding_avg.size()
-    encoding_avg_stacked = encoding_avg.view(batch_size * dim_embedding, -1)
-    return encoding_avg_stacked
 
+def simple_aggregation(encoding, aggregation_operation):
+    if aggregation_operation == 'mean':
+        aggregated_encoding = encoding.mean(1)
+    elif aggregation_operation == 'max':
+        aggregated_encoding = encoding.max(1)
+    elif aggregation_operation == 'sum':
+        aggregated_encoding = encoding.sum(1)
+
+    aggregated_encoding = aggregated_encoding.unsqueeze(1)
+    batch_size, mean_dim, _ = aggregated_encoding.size()
+    encoding_aggregated_stacked = aggregated_encoding.view(
+        batch_size * mean_dim, -1)
+
+    return encoding_aggregated_stacked
 
 class Encoder(nn.Module):
     """This class maps each x_i, y_i context point to a representation r_i

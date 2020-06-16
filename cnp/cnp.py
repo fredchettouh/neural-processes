@@ -1,4 +1,4 @@
-from .networks import Encoder, Decoder, MLPAggregator, mean_aggregation
+from .networks import Encoder, Decoder, simple_aggregation
 from .helpers import Helper
 import numpy as np
 from torch.distributions.normal import Normal
@@ -187,7 +187,8 @@ class RegressionCNP:
             aggregated_enconding, hidden = self._aggregator(encoding_batch_view,
                                                             hidden)
         else:
-            aggregated_enconding = mean_aggregation(encoding_batch_view)
+            aggregated_enconding = simple_aggregation(encoding_batch_view,
+                                                      'mean')
 
         encoding_stacked = format_encoding(
             aggregated_enconding, batch_size, num_trgt)
