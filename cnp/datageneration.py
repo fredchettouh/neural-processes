@@ -8,6 +8,7 @@
 import torch
 import argparse
 import numpy as np
+from .helpers import Helper
 
 
 class DataGenerator:
@@ -37,6 +38,33 @@ class DataGenerator:
         x_data = x_data.unsqueeze(-1)
         x_data = x_data.repeat(1, self._xdim)
         return x_data
+
+    def generate_curves(self):
+        raise Exception('Not implemented as base level')
+
+    def generate_loader_on_fly(self, batch_size, kwargs, purpose):
+        kwargs['purpose'] = purpose
+
+        X, y = self.generate_curves(**kwargs)
+
+        y = Helper.list_np_to_tensor(y)
+        X = X.repeat(y.shape[0], 1, 1)
+
+        trainloader = Helper.create_loader(
+            X, y, batch_size)
+
+        return trainloader
+
+    @staticmethod
+    def generate_from_single_function(X, y, batch_size, shuffle=True):
+        if shuffle:
+            shuffled_tensors = Helper.shuffletensor(X, y)
+            X, y = shuffled_tensors[0], shuffled_tensors[1]
+
+        loader = Helper.create_loader(
+            X, y, batch_size)
+        return loader
+
 
 class GaussianProcess(DataGenerator):
     pass
@@ -71,7 +99,6 @@ class GaussianProcess(DataGenerator):
         elif purpose == 'test':
             num_instances = num_instances_test
 
-
         for _ in range(num_instances):
             # creating as many standard
             standard_normals = torch.normal(0, 1, (self._steps, self._xdim))
@@ -104,7 +131,6 @@ class PolynomialRegression(DataGenerator):
             func_x = b1 * x_values ** 2 + b2 * x_values ** 3 + noise
             datasets.append(func_x.float())
         return x_values, datasets
-
 
 
 if __name__ == '__main__':

@@ -25,7 +25,6 @@ def create_linear_layer(layer_specs, index, dropout=0):
     else:
         return [lin_layer, relu_layer]
 
-
 def mean_aggregation(encoding):
     encoding_avg = encoding.mean(1)
     encoding_avg = encoding_avg.unsqueeze(1)
@@ -156,14 +155,51 @@ class Decoder(nn.Module):
         return self._process_input(input_as_pairs)
 
 
-class MLPAggregator(nn.Module):
+class BaseAggregator(nn.Module):
+
+    def __init__(
+            self, insize, num_layers, num_neurons, dimout=1, padding=False):
+        super().__init__()
+        self._insize = insize
+        self._dimout = dimout
+        self._num_layers = num_layers
+        self._num_neurons = num_neurons
+        self._padding = padding
+
+    def _zero_padding(self, embedding):
+
+        if self._zero_padding:
+            batch_size, n_observations, n_features = embedding.size()
+            zero_target = torch.zeros(batch_size, n_observations, self._insize)
+            zero_target[:, :, :n_features] = embedding
+            return zero_target
+        else:
+            return embedding
+
+    def init_hidden(self, num_tensors, batch_size):
+        base = next(self.parameters()).data
+        if num_tensors == 1:
+            hidden = base.new(
+                self._num_layers, batch_size, self._num_neurons).zero_()
+        else:
+            hidden = (
+                base.new(self._num_layers, batch_size, self._num_neurons).zero_(),
+                base.new(self._num_layers, batch_size, self._num_neurons).zero_()
+            )
+
+        return hidden
+
+
+class MLPAggregator(BaseAggregator):
     def __init__(
             self,
-            insize: int,
-            dimout: int = 1,
+            insize,
             num_layers: int = 3,
             num_neurons: int = 128,
-            dropout: float = 0):
+            dimout=1,
+            dropout: float = 0,
+            padding: bool = False
+    ):
         """
 
         Parameters
@@ -174,9 +210,8 @@ class MLPAggregator(nn.Module):
         num_neurons :
         dropout :
         """
-        super().__init__()
-        self._insize = insize
-        self._dimout = dimout
+        super().__init__(insize, num_layers, num_neurons, dimout, padding)
+
         self._hidden_layers = [num_neurons for _ in range(num_layers)]
 
         _first_layer = [
@@ -195,16 +230,11 @@ class MLPAggregator(nn.Module):
 
         self._process_input = nn.Sequential(*self._layers)
 
-    def _zero_padding(self, embedding):
-        batch_size, n_observations, n_features = embedding.size()
-        zero_target = torch.zeros(batch_size, n_observations, self._insize)
-        zero_target[:, :, :n_features] = embedding
-        return zero_target
-
-    def forward(self, embedding):
+    def forward(self, embedding, hidden):
         """
         Parameters
         ----------
+        hidden
         embedding: torch.Tensor: Shape (batch_size*num_contxt, dimr)
 
         """
@@ -213,7 +243,76 @@ class MLPAggregator(nn.Module):
         padded_embedding_stacked = padded_embedding.view(
             batch_size * n_features, -1)
 
-        return self._process_input(padded_embedding_stacked)
+        output = self._process_input(padded_embedding_stacked)
+        # we return None to pass to to hidden
+        _ = None
+
+        return output, _
+
+
+class AggrRNN(BaseAggregator):
+    # TODO is there a change if we feed a different shape to the
+    # network i.e. reshaping from 64,128,9 t0 128,64,9-->or is this the same
+    # TODO do we want to keep the hidden state alive across epochs?
+    def __init__(self, insize, num_layers, num_neurons,
+                 dimout, batch_first=True):
+        super().__init__(insize, num_layers, num_neurons, dimout)
+
+        self.rnn = nn.RNN(insize, num_neurons, num_layers,
+                          batch_first=batch_first)
+
+        self.fc = nn.Linear(num_neurons, dimout)
+
+    # todo this can be taken out i think because with h_0=none it will
+    # initialize to zero
+    # def init_h0(self, batch_size):
+    #     h_0 = torch.zeros(self._num_layers, batch_size, self._num_neurons)
+    #     return h_0
+
+    def forward(self, encoding, hidden=None):
+        # encoding comes in shape batch_size, num_obs, num_features
+        batch_size, seq_len, _ = encoding.size()
+        padded_encoding = self._zero_padding(encoding)
+        if not hidden:
+            hidden = self.init_hidden(num_tensors=1, batch_size=batch_size)
+
+        # encoding is passed due to batch_size=first
+        output, hidden = self.rnn(padded_encoding, hidden)
+        # output is reshaped to fit in the linear layers
+        # Todo find out why reshape works but view does not
+
+        output = output.reshape(batch_size * seq_len, -1)
+        output = self.fc(output)
+
+        return output, hidden
+
+
+class AggrLSTM(BaseAggregator):
+
+    def __init__(self, insize, num_layers, num_neurons,
+                 dimout, batch_first):
+        super().__init__(insize, num_layers, num_neurons, dimout)
+
+        self.lstm = nn.LSTM(insize, num_neurons, num_layers,
+                            batch_first=batch_first)
+
+        self.fc = nn.Linear(num_neurons, dimout)
+
+    def forward(self, encoding, hidden=None):
+        batch_size, seq_len, _ = encoding.size()
+        padded_encoding = self._zero_padding(encoding)
+
+        if not hidden:
+            hidden = self.init_hidden(num_tensors=2, batch_size=batch_size)
+
+        output, hidden = self.lstm(padded_encoding, hidden)
+        # output is reshaped to fit in the linear layers
+        # Todo find out why reshape works but view does not
+
+        output = output.reshape(batch_size * seq_len, -1)
+        output = self.fc(output)
+
+        return output, hidden
 
 
 if __name__ == "__main__":

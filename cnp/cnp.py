@@ -3,6 +3,8 @@ from .helpers import Helper
 import numpy as np
 from torch.distributions.normal import Normal
 import torch
+from importlib import import_module
+from copy import copy
 
 
 def select_data(contxt_idx, func_idx, xvalues, funcvalues, batch_size):
@@ -27,17 +29,18 @@ def select_data(contxt_idx, func_idx, xvalues, funcvalues, batch_size):
     context_x_stacked = context_x.view(batch_size * num_contxt, -1)
     context_y_stacked = context_y.view(batch_size * num_contxt, -1)
     target_x_stacked = target_x.view(batch_size * num_trgt, -1)
-
     return num_contxt, num_trgt, target_x, target_y, context_x_stacked, \
            context_y_stacked, target_x_stacked
 
 
 def get_sample_indexes(
-        min_contx, max_contx, min_trgts, max_trgts, dim_observation, both=True):
+        min_contx, max_contx, min_trgts, max_trgts, dim_observation, both=True,
+        fix_num_contxt=False):
     """Samples number and indexes of context and target points during training
      and tests
     Parameters
     ----------
+    fix_num_contxt
     dim_observation
     max_trgts
     min_trgts
@@ -45,7 +48,10 @@ def get_sample_indexes(
     min_contx
     both: boolean: Indicates whether both context and target points are required
     """
-    num_contxt = np.random.randint(min_contx, max_contx)
+    if fix_num_contxt:
+        num_contxt = max_contx//2
+    else:
+        num_contxt = np.random.randint(min_contx, max_contx)
     num_trgts = np.random.randint(num_contxt + min_trgts,
                                   num_contxt + max_trgts)
     trgts_idx = np.random.choice(np.arange(0, dim_observation), num_trgts)
@@ -82,6 +88,7 @@ class RegressionCNP:
             max_funcs,
             max_contx,
             min_contx,
+            fix_num_contxt,
             dimx,
             dimy,
             dimr,
@@ -99,10 +106,15 @@ class RegressionCNP:
         self._decoder = Decoder(dimx, num_neurons_encoder, dimout,
                                 num_layers_decoder, num_neurons_decoder,
                                 dropout)
+        aggregation_kwargs = copy(aggregation_kwargs)
+        method_name = aggregation_kwargs.pop('aggregator')
+        if method_name:
+            package_name = 'cnp.networks'
+            package = import_module(package_name)
+            method = getattr(package, method_name)
 
-        if aggregation_kwargs['num_layers'] and\
-                aggregation_kwargs['num_neurons']:
-            self._aggregator = MLPAggregator(**aggregation_kwargs)
+            self._aggregator = method(**aggregation_kwargs)
+            aggregation_kwargs['aggregator'] = method_name
         else:
             self._aggregator = None
 
@@ -110,14 +122,17 @@ class RegressionCNP:
             "min_trgts": min_funcs,
             "max_trgts": max_funcs,
             "max_contx": max_contx,
-            "min_contx": min_contx
+            "min_contx": min_contx,
+            "fix_num_contxt": fix_num_contxt
         }
 
-    def prep_data(self, xvalues, funcvalues, training=True):
+    def prep_data(self, xvalues, funcvalues, training=True,
+                  ):
         """
 
         Parameters
         ---------
+        fix_num_contxt
         training
         funcvalues
         xvalues :
@@ -125,13 +140,15 @@ class RegressionCNP:
         if training:
             func_idx, contxt_idx = get_sample_indexes(
                 **self._sample_specs_kwargs,
-                dim_observation=xvalues.shape[1])
+                dim_observation=xvalues.shape[1],
+            )
 
         else:
             func_idx, contxt_idx = get_sample_indexes(
                 **self._sample_specs_kwargs,
                 dim_observation=xvalues.shape[1],
-                both=False)
+                both=False,
+            )
         batch_size = xvalues.shape[0]
 
         num_contxt, num_trgt, target_x, target_y, context_x_stacked, \
@@ -144,11 +161,12 @@ class RegressionCNP:
 
     def network_pass(
             self, context_x_stacked, context_y_stacked, target_x_stacked,
-            batch_size, num_trgt, num_contxt):
+            batch_size, num_trgt, num_contxt, hidden=None):
         """
 
         Parameters
         ----------
+        hidden
         num_contxt
         num_trgt
         batch_size
@@ -163,16 +181,16 @@ class RegressionCNP:
         # from type of aggregator (i.e. mean, NN, RNN)
         encoding_batch_view = encoding.view(batch_size, num_contxt, -1)
 
-
         if self._aggregator:
-            encoding_batch_view = torch.transpose(encoding_batch_view, 1,2)
-            aggregated_enconding = self._aggregator(encoding_batch_view)
+            encoding_batch_view = torch.transpose(encoding_batch_view, 1, 2)
+            # todo we need to figureout here what to do with hidden
+            aggregated_enconding, hidden = self._aggregator(encoding_batch_view,
+                                                            hidden)
         else:
             aggregated_enconding = mean_aggregation(encoding_batch_view)
 
         encoding_stacked = format_encoding(
             aggregated_enconding, batch_size, num_trgt)
-
 
         decoding = self._decoder(target_x_stacked, encoding_stacked)
         decoding_rshp = decoding.view(batch_size, num_trgt, -1)
@@ -187,10 +205,12 @@ class RegressionCNP:
 
         return mu, sigma_transformed, distribution
 
-    def prep_and_pass(self, xvalues, funcvalues, training=True):
+    def prep_and_pass(self, xvalues, funcvalues, training=True,
+                      ):
         num_contxt, num_trgt, target_x, target_y, context_x_stacked, \
         context_y_stacked, target_x_stacked, batch_size, contxt_idx = \
             self.prep_data(xvalues, funcvalues, training)
+
         mu, sigma_transformed, distribution = self.network_pass(
             context_x_stacked, context_y_stacked, target_x_stacked,
             batch_size, num_trgt, num_contxt)

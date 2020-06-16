@@ -3,12 +3,13 @@ from torch.nn.functional import softplus
 from torch import nn
 import os
 import random
-
+from datetime import datetime
 import numpy as np
 import matplotlib.pyplot as plt
 from torch.utils import data
 import pandas as pd
-from IPython.display import display
+import json
+import collections
 
 
 class Helper:
@@ -59,7 +60,6 @@ class Helper:
             sorted_arrays.append(arg[order_permutation])
         return sorted_arrays
 
-
     @staticmethod
     def create_loader(x_values, func_x, batch_size):
         dataset = data.TensorDataset(x_values, func_x)
@@ -96,7 +96,6 @@ class Helper:
         """
         x = 0.5
         if type(model) == nn.Linear:
-
             nn.init.uniform_(model.weight, -0.05, 0.05)
             nn.init.uniform_(model.bias, -0.05, 0.05)
 
@@ -110,6 +109,36 @@ class Helper:
         random.seed(seed)
         os.environ['PYTHONHASHSEED'] = str(seed)
 
+    @staticmethod
+    def save_results(directory, experiment_name, args):
+        current_date = datetime.today()
+        day = str(current_date.day).zfill(2)
+        month = str(current_date.month).zfill(2)
+        year = str(current_date.year)
+        hour = str(current_date.hour).zfill(2)
+        minute = str(current_date.minute).zfill(2)
+        date_time = f"{year}_{month}_{day}_{hour}_{minute}"
+
+        new_dir_name = os.path.join(directory, f"{experiment_name}_{date_time}")
+        os.mkdir(new_dir_name)
+        for arg in args:
+            if arg[1]:
+                if type(arg[1]) == collections.OrderedDict:
+                    file_name = f"{new_dir_name}/{arg[0]}"
+                    torch.save(arg[1], file_name)
+                elif type(arg[1]) == list:
+                    file_name = f"{new_dir_name}/{arg[0]}.txt"
+                    with open(file_name, 'w') as file:
+                        for element in arg[1]:
+                            file.write(f"{element}\n")
+                elif type(arg[1]) == dict:
+                    file_name = f"{new_dir_name}/{arg[0]}.json"
+                    with open(file_name, 'w') as file:
+                        json.dump(arg[0], file)
+
+
+
+
 class Plotter:
 
     @staticmethod
@@ -119,7 +148,8 @@ class Plotter:
         ylabel = "Negative log probabability "
 
         xvalues = np.arange(0, len(training_losses), interval)
-        plt.plot(xvalues[1:], training_losses[::interval][1:], label='training loss')
+        plt.plot(xvalues[1:], training_losses[::interval][1:],
+                 label='training loss')
         plt.plot(xvalues[1:], vali_losses[1:], label='validation loss')
         plt.title(title)
         plt.xlabel(xlabel)
