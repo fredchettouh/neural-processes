@@ -306,7 +306,7 @@ class RegressionTrainer:
         self._cnp.decoder.eval()
 
         if aggregator_state_dict:
-            self._cnp.aggregator.load_state_dict(decoder_state_dict)
+            self._cnp.aggregator.load_state_dict(aggregator_state_dict)
             self._cnp.aggregator.eval()
 
         if self._datagenerator:  # generate data on the fly for every epoch

@@ -51,6 +51,11 @@ def get_sample_indexes(
     if fix_num_contxt:
         num_contxt = max_contx//2
     else:
+        # TODO this is not implmented as in in the paper:
+        # num_target = tf.random_uniform(
+        # shape=(), minval=2, maxval=self._max_num_context, dtype=tf.int32)
+        # In emiel this is implemented without replacement and with num_targets
+        # not necceserraily being larger than num_contxt
         num_contxt = np.random.randint(min_contx, max_contx)
     num_trgts = np.random.randint(num_contxt + min_trgts,
                                   num_contxt + max_trgts)
@@ -72,7 +77,6 @@ def format_encoding(encoding, batch_size, num_trgt):
     batch_size
     encoding :
     """
-    encoding = encoding.unsqueeze(1)
 
     # because we need to pair it with every target
     encoding_exp = encoding.repeat(1, num_trgt, 1)
@@ -200,14 +204,12 @@ class RegressionCNP:
         encoding_batch_view = encoding.view(batch_size, num_contxt, -1)
 
         if self._aggregator:
-            encoding_batch_view = torch.transpose(encoding_batch_view, 1, 2)
             # todo we need to figureout here what to do with hidden
-            aggregated_enconding, hidden = self._aggregator(encoding_batch_view,
-                                                            hidden)
+            aggregated_enconding = self._aggregator(
+                encoding_batch_view)
         else:
             aggregated_enconding = simple_aggregation(
                 encoding_batch_view, self.simple_aggregator_type)
-            # aggregated_enconding = encoding_batch_view.mean(1)
 
         encoding_stacked = format_encoding(
             aggregated_enconding, batch_size, num_trgt)

@@ -35,11 +35,8 @@ def simple_aggregation(encoding, aggregation_operation):
         aggregated_encoding = encoding.sum(1)
 
     aggregated_encoding = aggregated_encoding.unsqueeze(1)
-    batch_size, mean_dim, _ = aggregated_encoding.size()
-    encoding_aggregated_stacked = aggregated_encoding.view(
-        batch_size * mean_dim, -1)
 
-    return encoding_aggregated_stacked
+    return aggregated_encoding
 
 
 class BasicMLP(nn.Module):
@@ -116,59 +113,6 @@ class Encoder(BasicMLP):
         input_as_pairs = torch.cat((x_values, y_values), dim=1)
         return self._process_input(input_as_pairs)
 
-# class Encoder(nn.Module):
-#     """This class maps each x_i, y_i context point to a representation r_i
-#     To learn this Representation we are using a Multi Layer Perceptron
-#     The input shape will be batch_size, num_context_points, x_dim
-#     The input to the encoder are the value pairs, thus the dimensions are
-#     Batch_Size, (dimx+dimy). The Pytorch automatically pases the values
-#     sequentially through the ANN. The last layer will not have an activation
-#     function because we want the pure represenation.
-#     Parameters
-#     ----------
-#     dimx: int: Dimesion of each x value
-#     dimy: int: Dimesion of each y value
-#     dimr: int: Dimension of output representation
-#     num_layers: int: Dimension of hidden layers
-#     num_neurons: int: Number of Neurons for each hidden layer
-#     """
-#
-#     def __init__(self, dimx: int, dimy: int, dimr: int,
-#                  num_layers: int, num_neurons: int,
-#                  dropout: float = 0) -> None:
-#         super().__init__()
-#
-#         self._dimx = dimx
-#         self._dimy = dimy
-#         self._dimr = dimr
-#         self._hidden_layers = [num_neurons for _ in range(num_layers)]
-#
-#         _first_layer = [
-#             nn.Linear(self._dimx + self._dimy, self._hidden_layers[0]),
-#             nn.ReLU()]
-#
-#         _hidden_layers = [
-#             create_linear_layer(self._hidden_layers, i, dropout)
-#             for i in range(len(self._hidden_layers) - 2)]
-#         _hidden_layers_flat = [
-#             element for inner in _hidden_layers for element in inner]
-#
-#         _last_layer = [
-#             nn.Linear(self._hidden_layers[-2], self._hidden_layers[-1])]
-#
-#         self._layers = _first_layer + _hidden_layers_flat + _last_layer
-#
-#         self._process_input = nn.Sequential(*self._layers)
-#
-#     def forward(self, x_values, y_values):
-#         """
-#         Parameters
-#         ----------
-#         x_values: torch.Tensor: Shape (batch_size, dimx)
-#         y_values: torch.Tensor: Shape (batch_size, dimy)
-#         """
-#         input_as_pairs = torch.cat((x_values, y_values), dim=1)
-#         return self._process_input(input_as_pairs)
 
 class Decoder(BasicMLP):
     """
@@ -219,6 +163,19 @@ class BasicMLPAggregator(BasicMLP):
     """
 
     def __init__(self, insize, num_layers, num_neurons, dimout, dropout=0):
+        """
+
+        Parameters
+        ----------
+
+        insize : int
+        The dimensions of the embedding
+        num_layers : int
+        num_neurons : int
+        dimout : int
+        dropout : int
+
+        """
         super().__init__(insize, num_layers, num_neurons, dimout, dropout)
 
     @staticmethod
@@ -247,9 +204,8 @@ class BasicMLPAggregator(BasicMLP):
         aggregation : tensor (batch_size, 1, dim_embedding) or the weighted
         average of the context points of the embedding for each batch.
         """
-
         batch_size, n_features, _ = embedding.size()
-        stacked_embedding = embedding.view(
+        stacked_embedding = embedding.reshape(
             batch_size * n_features, -1)
         weights_for_average = self._process_input(stacked_embedding)
 
