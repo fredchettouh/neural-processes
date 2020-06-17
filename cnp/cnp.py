@@ -57,9 +57,9 @@ def get_sample_indexes(
         # In emiel this is implemented without replacement and with num_targets
         # not necceserraily being larger than num_contxt
         num_contxt = np.random.randint(min_contx, max_contx)
-    num_trgts = np.random.randint(num_contxt + min_trgts,
-                                  num_contxt + max_trgts)
-    trgts_idx = np.random.choice(np.arange(0, dim_observation), num_trgts)
+    num_trgts = np.random.randint(min_trgts, max_trgts)
+    trgts_idx = np.random.choice(
+        np.arange(0, dim_observation), num_trgts, replace=False)
     contxt_idx = trgts_idx[:num_contxt]
     if both:
         return trgts_idx, contxt_idx
