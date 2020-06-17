@@ -1,6 +1,8 @@
-from cnp.cnp import format_encoding, get_sample_indexes
+from cnp.cnp import format_encoding
+# get_sample_indexes
 import torch
-import numpy as np
+
+# import numpy as np
 
 seed = 0
 
@@ -32,8 +34,8 @@ def test_format_encoding():
 #         np.arange(0, dim_observation), num_targt_expected)
 #     contxt_idx_expected = trgts_idx_expected[:num_targt_expected]
 #
-#     trgts_idx, contxt_idx = get_sample_indexes(min_contx, max_contx, min_trgts,
-#                                                max_trgts, dim_observation, both)
+#     trgts_idx, contxt_idx = get_sample_indexes(
+#     min_contx, max_contx, min_trgts, max_trgts, dim_observation, both)
 # #
 #     assert (trgts_idx == trgts_idx_expected)
 #     assert (contxt_idx == contxt_idx_expected)

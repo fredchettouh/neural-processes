@@ -11,7 +11,6 @@ from copy import copy
 # HOWEVER THIS IS NOT POSSIBLE WITH GOOGLE COLAB
 
 from .helpers import Helper, Plotter
-from .cnp import RegressionCNP
 
 
 # TODO: optimizer has to become variable
@@ -43,7 +42,8 @@ class RegressionTrainer:
 
     dimr: tuple: Dimension of the encoding
 
-    dimout: int: Dimensionality of the ouput of the decoder, e.g. batch_size,1,2 for the one d regression case
+    dimout: int: Dimensionality of the ouput of the decoder, e.g. batch_size,1,2
+    for the one d regression case
 
     num_layers: int: Dimension of hidden layers
 
@@ -53,7 +53,8 @@ class RegressionTrainer:
 
     print_after: int: Indication of the we want to have a validation run
 
-    generatedata: boolean, optional: If True, data will be generated using the Datagenerator
+    generatedata: boolean, optional: If True, data will be generated using the
+    Datagenerator
 
     datagen_params: Dict, optional: Contains the parameters for data generation
     """
@@ -136,7 +137,7 @@ class RegressionTrainer:
                     funcvalues = funcvalues[None, :, None]
 
                 contxt_idx, xvalues, funcvalues, target_y, target_x, mu, \
-                sigma_transformed, distribution = \
+                    sigma_transformed, distribution = \
                     self._cnp.prep_and_pass(
                         xvalues, funcvalues, training=False,
                     )
@@ -171,7 +172,8 @@ class RegressionTrainer:
         Parameters
         ----------
 
-        print_after: boolean, optional: indicating if progress should be plotted
+        print_after: boolean, optional: indicating if progress should be
+        plotted
 
         batch_size_train: batch size of data
 
@@ -239,7 +241,7 @@ class RegressionTrainer:
                 optimizer.zero_grad()
 
                 contxt_idx, xvalues, funcvalues, target_y, target_x, mu, \
-                sigma_transformed, distribution = \
+                    sigma_transformed, distribution = \
                     self._cnp.prep_and_pass(
                         xvalues, funcvalues, training=True)
 
@@ -277,10 +279,10 @@ class RegressionTrainer:
         return encoder_state_dict, decoder_state_dict, aggregator_state_dict,\
                mean_epoch_loss, mean_vali_loss
 
-
     def run_test(
-            self, encoder_state_dict, decoder_state_dict, aggregator_state_dict,
-            batch_size_test, X_test=None, y_test=None, plotting=True):
+            self, encoder_state_dict, decoder_state_dict,
+            aggregator_state_dict, batch_size_test, X_test=None, y_test=None,
+            plotting=True):
         """This function performs one test run
                 Parameters
                 ----------
@@ -325,7 +327,7 @@ class RegressionTrainer:
             for xvalues, funcvalues in testloader:
 
                 contxt_idx, xvalues, funcvalues, target_y, target_x, mu, \
-                sigma_transformed, distribution = \
+                    sigma_transformed, distribution = \
                     self._cnp.prep_and_pass(
                         xvalues, funcvalues, training=False)
 
@@ -333,8 +335,8 @@ class RegressionTrainer:
                 running_mse += mse.item()
                 if plotting:
                     Plotter.plot_run(
-                        contxt_idx, xvalues, funcvalues, target_y, target_x, mu,
-                        sigma_transformed)
+                        contxt_idx, xvalues, funcvalues, target_y, target_x,
+                        mu, sigma_transformed)
             else:
                 test_set_mse = running_mse / len(testloader)
                 return test_set_mse

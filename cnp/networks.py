@@ -6,13 +6,14 @@ def create_linear_layer(layer_specs, index, dropout=0):
     """
     Parameters
     ----------
-    index: int: Indicates at which layer in the layer architecture specification
-    the model currently is
+    index: int: Indicates at which layer in the layer architecture
+    specification the model currently is
 
-    layer_specs: list: Holds the specification for all layers in the architecture
+    layer_specs: list: Holds the specification for all layers in the
+        architecture
 
     dropout: float: specifies the dropout probability to be used in the dropout
-    layer
+        layer
 
     returns a list of length one with the layer of the network specified
     """
@@ -180,9 +181,9 @@ class BasicMLPAggregator(BasicMLP):
 
     @staticmethod
     def aggregate(embedding, weights_for_average, batch_size, normalize=False):
-
         weights_for_average = torch.transpose(weights_for_average, 1, 0)
-        stacked_weights_for_average = weights_for_average.view(batch_size, 1, -1)
+        stacked_weights_for_average = weights_for_average.view(
+            batch_size, 1, -1)
         aggregation = torch.bmm(stacked_weights_for_average, embedding)
         if normalize:
             aggregation = aggregation / aggregation.sum()
@@ -190,7 +191,6 @@ class BasicMLPAggregator(BasicMLP):
         return aggregation
 
     def forward(self, embedding):
-
         """
 
         Parameters
