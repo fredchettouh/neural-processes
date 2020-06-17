@@ -116,6 +116,59 @@ class Encoder(BasicMLP):
         input_as_pairs = torch.cat((x_values, y_values), dim=1)
         return self._process_input(input_as_pairs)
 
+# class Encoder(nn.Module):
+#     """This class maps each x_i, y_i context point to a representation r_i
+#     To learn this Representation we are using a Multi Layer Perceptron
+#     The input shape will be batch_size, num_context_points, x_dim
+#     The input to the encoder are the value pairs, thus the dimensions are
+#     Batch_Size, (dimx+dimy). The Pytorch automatically pases the values
+#     sequentially through the ANN. The last layer will not have an activation
+#     function because we want the pure represenation.
+#     Parameters
+#     ----------
+#     dimx: int: Dimesion of each x value
+#     dimy: int: Dimesion of each y value
+#     dimr: int: Dimension of output representation
+#     num_layers: int: Dimension of hidden layers
+#     num_neurons: int: Number of Neurons for each hidden layer
+#     """
+#
+#     def __init__(self, dimx: int, dimy: int, dimr: int,
+#                  num_layers: int, num_neurons: int,
+#                  dropout: float = 0) -> None:
+#         super().__init__()
+#
+#         self._dimx = dimx
+#         self._dimy = dimy
+#         self._dimr = dimr
+#         self._hidden_layers = [num_neurons for _ in range(num_layers)]
+#
+#         _first_layer = [
+#             nn.Linear(self._dimx + self._dimy, self._hidden_layers[0]),
+#             nn.ReLU()]
+#
+#         _hidden_layers = [
+#             create_linear_layer(self._hidden_layers, i, dropout)
+#             for i in range(len(self._hidden_layers) - 2)]
+#         _hidden_layers_flat = [
+#             element for inner in _hidden_layers for element in inner]
+#
+#         _last_layer = [
+#             nn.Linear(self._hidden_layers[-2], self._hidden_layers[-1])]
+#
+#         self._layers = _first_layer + _hidden_layers_flat + _last_layer
+#
+#         self._process_input = nn.Sequential(*self._layers)
+#
+#     def forward(self, x_values, y_values):
+#         """
+#         Parameters
+#         ----------
+#         x_values: torch.Tensor: Shape (batch_size, dimx)
+#         y_values: torch.Tensor: Shape (batch_size, dimy)
+#         """
+#         input_as_pairs = torch.cat((x_values, y_values), dim=1)
+#         return self._process_input(input_as_pairs)
 
 class Decoder(BasicMLP):
     """
@@ -146,15 +199,11 @@ class Decoder(BasicMLP):
     def __init__(self, insize, num_layers, num_neurons, dimout, dropout=0):
         super().__init__(insize, num_layers, num_neurons, dimout, dropout)
 
-    def forward(self, x_values, y_values):
-        """
-        Parameters
-        ----------
-        x_values: torch.Tensor: Shape (batch_size, dimx)
+    def forward(self, x_values, r_values):
+        """Takes x and r values, combines them and passes them twice to MLP.
+        Thus we have one run for mu and one run for sigma"""
+        input_as_pairs = torch.cat((x_values, r_values), dim=1)
 
-        y_values: torch.Tensor: Shape (batch_size, dimy)
-        """
-        input_as_pairs = torch.cat((x_values, y_values), dim=1)
         return self._process_input(input_as_pairs)
 
 

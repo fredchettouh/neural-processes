@@ -14,6 +14,9 @@
 #notes
 /notes
 
+#results
+/experiments/results
+
 #local requirements that can be used to run Jupiter notebooks 
 local_requirements.txt
 

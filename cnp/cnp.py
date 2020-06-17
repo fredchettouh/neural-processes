@@ -101,11 +101,26 @@ class RegressionCNP:
             dropout=0):
         super().__init__()
 
-        self._encoder = Encoder(dimx+dimy, dimr, num_layers_encoder,
-                                num_neurons_encoder)
-        self._decoder = Decoder(dimx+dimr, dimout,
-                                num_layers_decoder, num_neurons_decoder,
-                                dropout)
+        self._encoder = Encoder(
+            insize=dimx+dimy,
+            num_layers=num_layers_encoder,
+            num_neurons=num_neurons_encoder,
+            dimout=dimr)
+
+        self._decoder = Decoder(
+            insize=dimx+dimr,
+            num_layers=num_layers_decoder,
+            num_neurons=num_neurons_decoder,
+            dimout=dimout,
+            dropout=dropout)
+
+        # self._decoder = Decoder(dimx, num_neurons_encoder, dimout,
+        #                         num_layers_decoder, num_neurons_decoder,
+        #                         dropout)
+
+        print(self._decoder)
+        print(self._encoder)
+
         aggregation_kwargs = copy(aggregation_kwargs)
         method_name = aggregation_kwargs.pop('aggregator')
         if method_name:
@@ -117,6 +132,9 @@ class RegressionCNP:
             aggregation_kwargs['aggregator'] = method_name
         else:
             self._aggregator = None
+            self.simple_aggregator_type = aggregation_kwargs[
+                "simple_aggregator_type"
+            ]
 
         self._sample_specs_kwargs = {
             "min_trgts": min_funcs,
@@ -187,8 +205,9 @@ class RegressionCNP:
             aggregated_enconding, hidden = self._aggregator(encoding_batch_view,
                                                             hidden)
         else:
-            aggregated_enconding = simple_aggregation(encoding_batch_view,
-                                                      'mean')
+            aggregated_enconding = simple_aggregation(
+                encoding_batch_view, self.simple_aggregator_type)
+            # aggregated_enconding = encoding_batch_view.mean(1)
 
         encoding_stacked = format_encoding(
             aggregated_enconding, batch_size, num_trgt)

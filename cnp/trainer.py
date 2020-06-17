@@ -4,6 +4,7 @@ from torch import optim
 from tqdm import tqdm
 from importlib import import_module
 import numpy as np
+from copy import copy
 
 # custom imports - WE SHOULD USE RELATIVE IMPORTS HERE
 # I.E. from .networks import Encoder, Decoder
@@ -82,7 +83,7 @@ class RegressionTrainer:
         if self._train_on_gpu:
             self._cnp.encoder.cuda()
             self._cnp.decoder.cuda()
-
+        data_kwargs = copy(data_kwargs)
         datagenerator = data_kwargs.pop('datagenerator')
         if datagenerator:
             package_name, method_name = datagenerator.rsplit('.', 1)
@@ -195,12 +196,12 @@ class RegressionTrainer:
                 list(self._cnp.encoder.parameters()) +
                 list(self._cnp.aggregator.parameters()) +
                 list(self._cnp.decoder.parameters()),
-                lr=self._lr,)
+                lr=self._lr)
         else:
             optimizer = optim.Adam(
                 list(self._cnp.encoder.parameters()) +
                 list(self._cnp.decoder.parameters()),
-                lr=self._lr,)
+                lr=self._lr)
 
         mean_epoch_loss = []
         mean_vali_loss = []
