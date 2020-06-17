@@ -41,42 +41,28 @@ def simple_aggregation(encoding, aggregation_operation):
 
     return encoding_aggregated_stacked
 
-class Encoder(nn.Module):
-    """This class maps each x_i, y_i context point to a representation r_i
-    To learn this Representation we are using a Multi Layer Perceptron
-    The input shape will be batch_size, num_context_points, x_dim
 
-    The input to the encoder are the value pairs, thus the dimensions are
-    Batch_Size, (dimx+dimy). The Pytorch automatically pases the values
-    sequentially through the ANN. The last layer will not have an activation
-    function because we want the pure represenation.
+class BasicMLP(nn.Module):
 
-    Parameters
-    ----------
-    dimx: int: Dimesion of each x value
-
-    dimy: int: Dimesion of each y value
-
-    dimr: int: Dimension of output representation
-
-    num_layers: int: Dimension of hidden layers
-
-    num_neurons: int: Number of Neurons for each hidden layer
-    """
-
-    def __init__(self, dimx: int, dimy: int, dimr: int,
-                 num_layers: int, num_neurons: int,
-                 dropout: float = 0) -> None:
+    def __init__(self, insize, num_layers, num_neurons, dimout, dropout=0):
         super().__init__()
 
-        self._dimx = dimx
-        self._dimy = dimy
-        self._dimr = dimr
+        # todo add dropout to first layer and add batch normalization
+
+        self._insize = insize
+        self._num_layers = num_layers
+        self._num_neurons = num_neurons
+        self._dimout = dimout
+        self._dropout = dropout
+
         self._hidden_layers = [num_neurons for _ in range(num_layers)]
 
         _first_layer = [
-            nn.Linear(self._dimx + self._dimy, self._hidden_layers[0]),
+            nn.Linear(self._insize, self._hidden_layers[0]),
             nn.ReLU()]
+
+        if dropout:
+            _first_layer.append(nn.Dropout(p=dropout))
 
         _hidden_layers = [
             create_linear_layer(self._hidden_layers, i, dropout)
@@ -85,11 +71,39 @@ class Encoder(nn.Module):
             element for inner in _hidden_layers for element in inner]
 
         _last_layer = [
-            nn.Linear(self._hidden_layers[-2], self._hidden_layers[-1])]
+            nn.Linear(self._hidden_layers[-1], self._dimout)]
 
         self._layers = _first_layer + _hidden_layers_flat + _last_layer
 
         self._process_input = nn.Sequential(*self._layers)
+
+
+class Encoder(BasicMLP):
+    """
+    This class maps each x_i, y_i context point to a representation r_i
+    To learn this Representation we are using a Multi Layer Perceptron
+    The input shape will be batch_size, num_context_points, x_dim
+
+    The input to the encoder are the value pairs, thus the dimensions are
+     Batch_Size, (dimx+dimy). The Pytorch automatically pases the values
+     sequentially through the ANN. The last layer will not have an activation
+    function because we want the pure represenation.
+
+     Parameters
+    ----------
+    dimx: int: Dimesion of each x value
+
+    dimy: int: Dimesion of each y value
+    dimr: int: Dimension of output representation
+
+    num_layers: int: Dimension of hidden layers
+
+    num_neurons: int: Number of Neurons for each hidden layer
+
+    """
+
+    def __init__(self, insize, num_layers, num_neurons, dimout, dropout=0):
+        super().__init__(insize, num_layers, num_neurons, dimout, dropout)
 
     def forward(self, x_values, y_values):
         """
@@ -103,8 +117,9 @@ class Encoder(nn.Module):
         return self._process_input(input_as_pairs)
 
 
-class Decoder(nn.Module):
-    """The decoder takes in x_values, that is the target points and combines
+class Decoder(BasicMLP):
+    """
+    The decoder takes in x_values, that is the target points and combines
     them with the represenation of the context points by concatenation.
     The resulting tensor is passed to an MLP that
     is asked to ouput the parameters for the sought after distribution, in this
@@ -117,50 +132,80 @@ class Decoder(nn.Module):
     since the context points are a subset of the target points.
 
 
-    Parameters
-    ----------
-    dimx: int: Dimension of each x value
+     Parameters
+     ----------
+     dimx: int: Dimension of each x value
 
-    dimr: int: Dimension of each of the representations
+     dimr: int: Dimension of each of the representations
 
-    num_layers: int: Dimension of hidden layers
+     num_layers: int: Dimension of hidden layers
 
     num_neurons: int: Number of Neurons for each hidden layer
     """
 
-    def __init__(self, dimx, dimr, dimparam, num_layers, num_neurons,
-                 dropout=0):
-        super().__init__()
+    def __init__(self, insize, num_layers, num_neurons, dimout, dropout=0):
+        super().__init__(insize, num_layers, num_neurons, dimout, dropout)
 
-        self._dimx = dimx
-        self._dimr = dimr
-        self._dimparam = dimparam
-        self._hidden_layers = [num_neurons for _ in range(num_layers)]
+    def forward(self, x_values, y_values):
+        """
+        Parameters
+        ----------
+        x_values: torch.Tensor: Shape (batch_size, dimx)
 
-        _first_layer = [
-            nn.Linear(self._dimx + self._dimr, self._hidden_layers[0]),
-            nn.ReLU()]
-        if dropout:
-            _first_layer.append(nn.Dropout(p=dropout))
-
-        _hidden_layers = [
-            create_linear_layer(self._hidden_layers, i, dropout)
-            for i in range(len(self._hidden_layers) - 2)]
-        _hidden_layers_flat = [
-            element for inner in _hidden_layers for element in inner]
-        _last_layer = [nn.Linear(self._hidden_layers[-1], self._dimparam)]
-
-        self._layers = _first_layer + _hidden_layers_flat + _last_layer
-
-        self._process_input = nn.Sequential(*self._layers)
-
-    def forward(self, x_values, r_values):
-        """Takes x and r values, combines them and passes them twice to MLP.
-        Thus we have one run for mu and one run for sigma"""
-
-        input_as_pairs = torch.cat((x_values, r_values), dim=1)
-
+        y_values: torch.Tensor: Shape (batch_size, dimy)
+        """
+        input_as_pairs = torch.cat((x_values, y_values), dim=1)
         return self._process_input(input_as_pairs)
+
+
+class BasicMLPAggregator(BasicMLP):
+    """
+    Goal of the this class is to learn the weights of an weighted average
+    The input is the embedding from the encoder. For batch_size one,
+     i.e. one function and x context points we need to learn x weights.
+     That means that the learned weight vector has the dimensions
+     x times 1. We transpose this an multiply it with the embedding tensor
+    thus (batch_size, 1, x) *(batchsize_x, dim_embedding) =
+     (batch_size, 1, dim_embedding)
+    """
+
+    def __init__(self, insize, num_layers, num_neurons, dimout, dropout=0):
+        super().__init__(insize, num_layers, num_neurons, dimout, dropout)
+
+    @staticmethod
+    def aggregate(embedding, weights_for_average, batch_size, normalize=False):
+
+        weights_for_average = torch.transpose(weights_for_average, 1, 0)
+        stacked_weights_for_average = weights_for_average.view(batch_size, 1, -1)
+        aggregation = torch.bmm(stacked_weights_for_average, embedding)
+        if normalize:
+            aggregation = aggregation / aggregation.sum()
+
+        return aggregation
+
+    def forward(self, embedding):
+
+        """
+
+        Parameters
+        ----------
+        embedding : tensor (batch_size, num_contxt, dim_embedding). As with
+        all aggregation tasks the embedding is not stacked but expected in the
+        batch view.
+
+        Returns
+        -------
+        aggregation : tensor (batch_size, 1, dim_embedding) or the weighted
+        average of the context points of the embedding for each batch.
+        """
+
+        batch_size, n_features, _ = embedding.size()
+        stacked_embedding = embedding.view(
+            batch_size * n_features, -1)
+        weights_for_average = self._process_input(stacked_embedding)
+
+        return self.aggregate(embedding, weights_for_average,
+                              batch_size)
 
 
 class BaseAggregator(nn.Module):
@@ -191,9 +236,10 @@ class BaseAggregator(nn.Module):
                 self._num_layers, batch_size, self._num_neurons).zero_()
         else:
             hidden = (
-                base.new(self._num_layers, batch_size, self._num_neurons).zero_(),
-                base.new(self._num_layers, batch_size, self._num_neurons).zero_()
-            )
+                base.new(
+                    self._num_layers, batch_size, self._num_neurons).zero_(),
+                base.new(
+                    self._num_layers, batch_size, self._num_neurons).zero_())
 
         return hidden
 
@@ -232,7 +278,7 @@ class MLPAggregator(BaseAggregator):
             element for inner in _hidden_layers for element in inner]
 
         _last_layer = [
-            nn.Linear(self._hidden_layers[-2], self._dimout)]
+            nn.Linear(self._hidden_layers[-1], self._dimout)]
 
         self._layers = _first_layer + _hidden_layers_flat + _last_layer
 

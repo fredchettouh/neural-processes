@@ -101,9 +101,9 @@ class RegressionCNP:
             dropout=0):
         super().__init__()
 
-        self._encoder = Encoder(dimx, dimy, dimr, num_layers_encoder,
+        self._encoder = Encoder(dimx+dimy, dimr, num_layers_encoder,
                                 num_neurons_encoder)
-        self._decoder = Decoder(dimx, num_neurons_encoder, dimout,
+        self._decoder = Decoder(dimx+dimr, dimout,
                                 num_layers_decoder, num_neurons_decoder,
                                 dropout)
         aggregation_kwargs = copy(aggregation_kwargs)

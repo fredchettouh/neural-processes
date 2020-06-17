@@ -1,0 +1,15 @@
+README.md
+setup.py
+cnp/1_d_regression.py
+cnp/__init__.py
+cnp/cnp.py
+cnp/datageneration.py
+cnp/helpers.py
+cnp/kernels.py
+cnp/networks.py
+cnp/param_tuner.py
+cnp/trainer.py
+neural_processes.egg-info/PKG-INFO
+neural_processes.egg-info/SOURCES.txt
+neural_processes.egg-info/dependency_links.txt
+neural_processes.egg-info/top_level.txt
