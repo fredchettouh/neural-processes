@@ -140,6 +140,8 @@ class RegressionCNP:
                 "simple_aggregator_type"
             ]
 
+        print(self._aggregator)
+
         self._sample_specs_kwargs = {
             "min_trgts": min_funcs,
             "max_trgts": max_funcs,

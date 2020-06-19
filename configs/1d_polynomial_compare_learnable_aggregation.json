@@ -15,7 +15,7 @@
     "num_neurons_decoder": 128 ,
     "num_neurons_encoder": 128 ,
     "aggregation_kwargs": {
-      "aggregator": "BasicMLPAggregator",
+      "aggregator": "GatedMLPAggregator",
       "insize": 128,
       "num_layers": 2,
       "num_neurons": 64,
@@ -27,13 +27,13 @@
     "mu": 0 ,
     "sigma": 2 ,
     "num_instances_train": 64 ,
-    "num_instances_vali": 1 ,
-    "num_instances_test": 1
+    "num_instances_vali": 4 ,
+    "num_instances_test": 4
   } ,
   "experiment_params": {
     "dim_observation": 50 ,
     "lr": 0.001 ,
-    "n_epochs": 10000 ,
+    "n_epochs": 100000 ,
     "range_x": [
       -2 ,
       2
@@ -44,8 +44,8 @@
   } ,
   "train_kwargs": {
     "batch_size_train": 64 ,
-    "batch_size_vali": 1 ,
-    "batch_size_test": 1 ,
+    "batch_size_vali": 4 ,
+    "batch_size_test": 4,
     "plotting": true ,
     "print_after": 100
   }

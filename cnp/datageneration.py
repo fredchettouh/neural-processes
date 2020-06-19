@@ -75,7 +75,8 @@ class GaussianProcess(DataGenerator):
         # getting x1^2+x2^2....xp^2 for each observation
         xrow = torch.sum(x * x, 1)
         yrow = torch.sum(y * y, 1)
-        # reshaping x and y sums so that we can add each y^2 row sum to each element of the vector xrow
+        # reshaping x and y sums so that we can add each y^2 row sum
+        # to each element of the vector xrow
         # thus creating a matrix of pairwise sums x^2+y^2
         x_res = xrow.reshape(x.shape[0], 1)
         y_res = yrow.reshape(1, x.shape[0])

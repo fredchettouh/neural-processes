@@ -1,8 +1,8 @@
 import torch
 from torch import nn
 
-
-def create_linear_layer(layer_specs, index, dropout=0):
+# Todo allow for different activation function
+def create_linear_layer(layer_specs, index, dropout, activation):
     """
     Parameters
     ----------
@@ -18,13 +18,13 @@ def create_linear_layer(layer_specs, index, dropout=0):
     returns a list of length one with the layer of the network specified
     """
     lin_layer = nn.Linear(layer_specs[index], layer_specs[index + 1])
-    relu_layer = nn.ReLU()
+    activation_function = activation
     dropout_layer = nn.Dropout(p=dropout)
 
     if dropout:
-        return [lin_layer, relu_layer, dropout_layer]
+        return [lin_layer, activation_function, dropout_layer]
     else:
-        return [lin_layer, relu_layer]
+        return [lin_layer, activation_function]
 
 
 def simple_aggregation(encoding, aggregation_operation):
@@ -42,9 +42,9 @@ def simple_aggregation(encoding, aggregation_operation):
 
 class BasicMLP(nn.Module):
 
-    def __init__(self, insize, num_layers, num_neurons, dimout, dropout=0):
+    def __init__(self, insize, num_layers, num_neurons, dimout, dropout=0,
+                 activation='nn.ReLU()'):
         super().__init__()
-
         # todo add dropout to first layer and add batch normalization
 
         self._insize = insize
@@ -53,17 +53,20 @@ class BasicMLP(nn.Module):
         self._dimout = dimout
         self._dropout = dropout
 
+        activation = eval(activation)
+
         self._hidden_layers = [num_neurons for _ in range(num_layers)]
 
         _first_layer = [
             nn.Linear(self._insize, self._hidden_layers[0]),
-            nn.ReLU()]
+            activation]
 
         if dropout:
             _first_layer.append(nn.Dropout(p=dropout))
 
         _hidden_layers = [
-            create_linear_layer(self._hidden_layers, i, dropout)
+            create_linear_layer(
+                self._hidden_layers, i, dropout, activation)
             for i in range(len(self._hidden_layers) - 2)]
         _hidden_layers_flat = [
             element for inner in _hidden_layers for element in inner]
@@ -74,6 +77,10 @@ class BasicMLP(nn.Module):
         self._layers = _first_layer + _hidden_layers_flat + _last_layer
 
         self._process_input = nn.Sequential(*self._layers)
+
+    @property
+    def process_input(self):
+        return self._process_input
 
 
 class Encoder(BasicMLP):
@@ -157,10 +164,18 @@ class BasicMLPAggregator(BasicMLP):
     Goal of the this class is to learn the weights of an weighted average
     The input is the embedding from the encoder. For batch_size one,
      i.e. one function and x context points we need to learn x weights.
+     That means that the input is num_context_points X dim_embedding
+     In the simplest case this is multiplied by a dim_embedding X 1 weight
+     vector to produce a num_context_points X 1 vector which is the weight
+     vector
      That means that the learned weight vector has the dimensions
      x times 1. We transpose this an multiply it with the embedding tensor
     thus (batch_size, 1, x) *(batchsize_x, dim_embedding) =
-     (batch_size, 1, dim_embedding)
+    (batch_size, 1, dim_embedding)
+
+    A theoretical derivation of this approach can be found here:
+    https://arxiv.org/pdf/1802.04712.pdf
+
     """
 
     def __init__(self, insize, num_layers, num_neurons, dimout, dropout=0):
@@ -179,22 +194,27 @@ class BasicMLPAggregator(BasicMLP):
         """
         super().__init__(insize, num_layers, num_neurons, dimout, dropout)
 
-    @staticmethod
-    def aggregate(embedding, weights_for_average, batch_size, normalize=False):
+        self.softmax = nn.Softmax(dim=1)
+
+    def aggregate(self, embedding, weights_for_average, batch_size,
+                  normalize):
         weights_for_average = torch.transpose(weights_for_average, 1, 0)
-        stacked_weights_for_average = weights_for_average.view(
+        weights_for_average_batch = weights_for_average.view(
             batch_size, 1, -1)
-        aggregation = torch.bmm(stacked_weights_for_average, embedding)
+
         if normalize:
-            aggregation = aggregation / aggregation.sum()
+            normalized_weights = self.softmax(weights_for_average_batch)
+
+        aggregation = torch.bmm(normalized_weights, embedding)
 
         return aggregation
 
-    def forward(self, embedding):
+    def forward(self, embedding, normalize=True):
         """
 
         Parameters
         ----------
+        normalize
         embedding : tensor (batch_size, num_contxt, dim_embedding). As with
         all aggregation tasks the embedding is not stacked but expected in the
         batch view.
@@ -210,7 +230,66 @@ class BasicMLPAggregator(BasicMLP):
         weights_for_average = self._process_input(stacked_embedding)
 
         return self.aggregate(embedding, weights_for_average,
-                              batch_size)
+                              batch_size, normalize)
+
+
+class GatedMLPAggregator(nn.Module):
+    def __init__(self, insize, dimout, num_layers=2,
+                 num_neurons=128,
+                 dropout=0):
+
+        super().__init__()
+
+        self.attention = BasicMLP(
+            insize=insize,
+            dimout=num_neurons,
+            num_layers=num_layers,
+            num_neurons=num_neurons,
+            dropout=dropout
+        )
+
+        self.gate = BasicMLP(
+            insize=insize,
+            dimout=num_neurons,
+            num_layers=num_layers,
+            num_neurons=num_neurons,
+            dropout=dropout
+        )
+
+        self.sigmoid = nn.Sigmoid()
+        self.tanh = nn.Tanh()
+        self.fc = nn.Linear(num_neurons, dimout)
+        self.softmax = nn.Softmax(dim=1)
+
+    def aggregate(self, embedding, weights_for_average, batch_size,
+                  normalize):
+        weights_for_average = torch.transpose(weights_for_average, 1, 0)
+        weights_for_average_batch = weights_for_average.reshape(
+            batch_size, 1, -1)
+
+        if normalize:
+            normalized_weights = self.softmax(weights_for_average_batch)
+
+        aggregation = torch.bmm(normalized_weights, embedding)
+
+        return aggregation
+
+    def forward(self, embedding, normalize=True):
+        batch_size, n_features, _ = embedding.size()
+        stacked_embedding = embedding.reshape(
+            batch_size * n_features, -1)
+        # these two networks are both of size dim_embeddings X dim_hidden
+        attention_weights = self.sigmoid(
+            self.attention.process_input(stacked_embedding))
+        gated_weights = self.tanh(self.gate.process_input(stacked_embedding))
+
+        # elementwise combination of the two weight vectors
+        weights_for_average = self.fc(attention_weights * gated_weights)
+
+        aggregation = self.aggregate(embedding, weights_for_average,
+                                     batch_size, normalize)
+
+        return aggregation
 
 
 class BaseAggregator(nn.Module):

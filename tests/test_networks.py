@@ -1,5 +1,5 @@
 from cnp.networks import simple_aggregation, BasicMLP, Encoder, Decoder, \
-    BasicMLPAggregator
+    BasicMLPAggregator, GatedMLPAggregator
 import torch
 
 
@@ -45,3 +45,17 @@ def test_BasicMLPAggregator():
     batch_size, _, dim_encoding = aggregation.size()
     assert (batch_size == 64)
     assert (dim_encoding == 128)
+
+def test_GatedMLPAggregator():
+    encoding = torch.randn(64, 5, 128)
+    aggr = GatedMLPAggregator(insize=128,
+                              num_layers=2,
+                              num_neurons=128,
+                              dimout=1)
+
+    aggregation = aggr(encoding)
+
+    batch_size, mean_dim, embedding_dim = aggregation.size()
+    assert (batch_size == 64)
+    assert (mean_dim == 1)
+    assert (embedding_dim == 128)

@@ -166,13 +166,15 @@ class Plotter:
         It makes also sure that the targetpoints and predictions are ordered
         for propper plotting
          """
+        batch_size = xvalues.shape[0]
+        idx_to_plot = np.random.randint(0, batch_size)
+        context_y_plot = funcvalues[idx_to_plot, contxt_idx, :].flatten().cpu()
+        context_x_plot = xvalues[idx_to_plot, contxt_idx, :].flatten().cpu()
+        y_plot = target_y[idx_to_plot].flatten().cpu().numpy()
+        x_plot = target_x[idx_to_plot].flatten().cpu().numpy()
+        var_plot = cov_matrix[idx_to_plot].flatten().cpu().numpy()
+        mu_plot = mu[idx_to_plot].flatten().cpu().numpy()
 
-        context_y_plot = funcvalues[:, contxt_idx, :].flatten().cpu()
-        context_x_plot = xvalues[:, contxt_idx, :].flatten().cpu()
-        y_plot = target_y.flatten().cpu().numpy()
-        x_plot = target_x.flatten().cpu().numpy()
-        var_plot = cov_matrix.flatten().cpu().numpy()
-        mu_plot = mu.flatten().cpu().numpy()
         x_plot, y_plot, mu_plot, var_plot = Helper.sort_arrays(
             x_plot,
             y_plot,
