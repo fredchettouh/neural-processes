@@ -235,6 +235,7 @@ class RegressionCNP:
         context_y_stacked, target_x_stacked, batch_size, contxt_idx = \
             self.prep_data(xvalues, funcvalues, training)
 
+
         mu, sigma_transformed, distribution = self.network_pass(
             context_x_stacked, context_y_stacked, target_x_stacked,
             batch_size, num_trgt, num_contxt)

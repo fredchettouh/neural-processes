@@ -2,7 +2,7 @@
   "cnp_params": {
     "dimout": 2 ,
     "dimr": 128 ,
-    "dimx": 1 ,
+    "dimx": 2 ,
     "dimy": 1 ,
     "dropout": 0 ,
     "max_contx": 10 ,
@@ -39,14 +39,14 @@
       2
     ] ,
     "seed": null ,
-    "dimx": 1 ,
+    "dimx": 2 ,
     "train_on_gpu": false
   } ,
   "train_kwargs": {
     "batch_size_train": 64 ,
     "batch_size_vali": 5 ,
     "batch_size_test": 1 ,
-    "plotting": true ,
-    "print_after": 100
+    "plotting": false ,
+    "print_after": 1000
   }
 }

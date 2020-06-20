@@ -30,10 +30,12 @@ def create_linear_layer(layer_specs, index, dropout, activation):
 def simple_aggregation(encoding, aggregation_operation):
     if aggregation_operation == 'mean':
         aggregated_encoding = encoding.mean(1)
+        # Todo: Aggregation type max does not work
     elif aggregation_operation == 'max':
         aggregated_encoding = encoding.max(1)
     elif aggregation_operation == 'sum':
         aggregated_encoding = encoding.sum(1)
+
 
     aggregated_encoding = aggregated_encoding.unsqueeze(1)
 

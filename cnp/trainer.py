@@ -86,6 +86,7 @@ class RegressionTrainer:
             self._cnp.decoder.cuda()
         data_kwargs = copy(data_kwargs)
         datagenerator = data_kwargs.pop('datagenerator')
+
         if datagenerator:
             package_name, method_name = datagenerator.rsplit('.', 1)
             package = import_module(package_name)
@@ -159,7 +160,7 @@ class RegressionTrainer:
                 print(f'Validation loss for the function plotted: \
                 {round(vali_loss.item(), 3)}')
 
-                if print_after:
+                if print_after and not target_x.shape[-1] > 1:
                     Plotter.plot_run(contxt_idx, xvalues,
                                      funcvalues, target_y, target_x, mu,
                                      sigma_transformed)
@@ -215,6 +216,7 @@ class RegressionTrainer:
                 trainloader = self._datagenerator.generate_loader_on_fly(
                     batch_size_train, self.data_kwargs, purpose='train')
 
+
                 valiloader = self._datagenerator.generate_loader_on_fly(
                     batch_size_vali, self.data_kwargs, purpose='vali')
 
@@ -235,9 +237,9 @@ class RegressionTrainer:
                     xvalues = xvalues.unsqueeze(0)
                     funcvalues = funcvalues[None, :, None]
 
+
                 if self._train_on_gpu:
                     xvalues, funcvalues = xvalues.cuda(), funcvalues.cuda()
-
                 optimizer.zero_grad()
 
                 contxt_idx, xvalues, funcvalues, target_y, target_x, mu, \

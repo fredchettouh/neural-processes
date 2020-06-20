@@ -16,7 +16,7 @@ class Helper:
 
     @staticmethod
     def scale_shift_uniform(a=0, b=1, *size):
-        return torch.rand(size=size) * (a - b) + b
+        return torch.rand(size=size, dtype=torch.float64) * (a - b) + b
 
     @staticmethod
     def read_and_transform(data_path, target_col, train_share=0.8, seed=None):

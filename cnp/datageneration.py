@@ -9,6 +9,7 @@ import torch
 import argparse
 import numpy as np
 from .helpers import Helper
+from copy import copy
 
 
 class DataGenerator:
@@ -27,17 +28,21 @@ class DataGenerator:
     steps: tuple: number of x values to create
     """
 
-    def __init__(self, xdim=1, range_x=(-2, 2), steps=400):
+    def __init__(self, xdim=1, range_x=(None, None), steps=400):
         self._xdim = xdim
         self._xmin = range_x[0]
         self._xmax = range_x[1]
         self._steps = steps
 
-    def _create_x(self):
-        x_data = torch.linspace(self._xmin, self._xmax, self._steps)
-        x_data = x_data.unsqueeze(-1)
-        x_data = x_data.repeat(1, self._xdim)
-        return x_data
+    def _create_shuffled_linspace(self):
+        lspace = torch.linspace(self._xmin, self._xmax, self._steps)[:, None]
+        temp_lspace = copy(lspace)
+        for i in range(1, self._xdim):
+            perm = torch.randperm(self._steps)
+            lspace_shuffled = temp_lspace[perm]
+            lspace = torch.cat((lspace, lspace_shuffled), dim=1)
+
+        return lspace
 
     def generate_curves(self):
         raise Exception('Not implemented as base level')
@@ -47,13 +52,10 @@ class DataGenerator:
 
         X, y = self.generate_curves(**kwargs)
 
-        y = Helper.list_np_to_tensor(y)
-        X = X.repeat(y.shape[0], 1, 1)
-
-        trainloader = Helper.create_loader(
+        loader = Helper.create_loader(
             X, y, batch_size)
 
-        return trainloader
+        return loader
 
     @staticmethod
     def generate_from_single_function(X, y, batch_size, shuffle=True):
@@ -69,8 +71,7 @@ class DataGenerator:
 class GaussianProcess(DataGenerator):
     pass
 
-    def _rbf_kernel(self, length_scale, gamma):
-        x = self._create_x()
+    def _rbf_kernel(self, length_scale, gamma, x):
         y = x
         # getting x1^2+x2^2....xp^2 for each observation
         xrow = torch.sum(x * x, 1)
@@ -84,12 +85,13 @@ class GaussianProcess(DataGenerator):
         xy = torch.mm(x, y.t())
         # adding everything together of the form x^2+y^2-2xy scaling it 
         kernel = torch.exp(-gamma * ((x_res + y_res - 2 * xy) / length_scale))
-        return x, kernel
+        return kernel
 
     def generate_curves(self, noise=1e-4, length_scale=0.4, gamma=1,
                         num_instances_train=None, num_instances_vali=None,
                         num_instances_test=None, purpose=None):
-        x_values, kernel = self._rbf_kernel(length_scale, gamma)
+        x_values = self._create_shuffled_linspace()
+        kernel = self._rbf_kernel(length_scale, gamma, x_values)
         kernel = kernel + torch.eye(self._steps) * noise
         cholesky_decomp = torch.cholesky(kernel)
         datasets = []
@@ -102,21 +104,33 @@ class GaussianProcess(DataGenerator):
 
         for _ in range(num_instances):
             # creating as many standard
-            standard_normals = torch.normal(0, 1, (self._steps, self._xdim))
+            standard_normals = torch.normal(0, 1, (self._steps, 1))
             func_x = cholesky_decomp @ standard_normals
             datasets.append(func_x)
+
+        datasets = Helper.list_np_to_tensor(datasets)
+        x_values = x_values.repeat(datasets.shape[0], 1, 1)
+
         return x_values, datasets
 
 
 class PolynomialRegression(DataGenerator):
     pass
 
-    def generate_curves(self, mu=0, sigma=2, num_instances_train=None,
-                        num_instances_vali=None, num_instances_test=None,
-                        purpose=None, seed=None):
-        x_values = self._create_x().float()
+    def generate_curves(
+            self,
+            mu_gen=0,
+            sigma_gen=1,
+            mu_noise=0,
+            sigma_noise=0.04,
+            min_coef=-1,
+            max_coef=1,
+            num_instances_train=None,
+            num_instances_vali=None,
+            num_instances_test=None,
+            purpose=None,
+            seed=None):
 
-        datasets = []
         if purpose == 'train':
             num_instances = num_instances_train
         elif purpose == 'vali':
@@ -124,15 +138,37 @@ class PolynomialRegression(DataGenerator):
         elif purpose == 'test':
             num_instances = num_instances_test
 
-        for i in range(num_instances):
-            b1 = np.random.uniform(-3, 3)
-            b2 = np.random.uniform(-3, 3)
-            noise = torch.tensor(
-                np.random.normal(mu, sigma, self._steps)).unsqueeze(-1)
-            func_x = b1 * x_values ** 2 + b2 * x_values ** 3 + noise
-            datasets.append(func_x.float())
-        return x_values, datasets
+        x_values = torch.normal(
+            mean=mu_gen,
+            std=sigma_gen,
+            size=(num_instances, self._steps, self._xdim),
+            dtype=torch.float64)
+        x_values_copy = copy(x_values)
 
+        for i in range(0, self._xdim):
+            x_values_copy = torch.cat((
+                x_values_copy,
+                (x_values_copy[:, :, i] ** 2)[:, :, None],
+                (x_values_copy[:, :, i] ** 3)[:, :, None]),
+                dim=2)
+        coefs = Helper.scale_shift_uniform(min_coef, max_coef,
+                                           *(num_instances, self._xdim * 3, 1))
+
+        noise = torch.normal(
+            mean=mu_noise, std=sigma_noise, size=(num_instances, 1, 1),
+            dtype=torch.float64)
+
+        func_values = torch.bmm(x_values_copy, coefs) + noise
+
+        return x_values.float(), func_values.float()
+
+
+
+# class TwoDImageRegression:
+#     def __init__(self, width, height):
+#
+#
+#
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
