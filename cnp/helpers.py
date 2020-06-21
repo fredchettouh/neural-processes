@@ -5,7 +5,6 @@ import os
 import random
 from datetime import datetime
 import numpy as np
-import matplotlib.pyplot as plt
 from torch.utils import data
 import pandas as pd
 import json
@@ -135,61 +134,6 @@ class Helper:
                     file_name = f"{new_dir_name}/{arg[0]}.json"
                     with open(file_name, 'w') as file:
                         json.dump(arg[0], file)
-
-
-
-
-class Plotter:
-
-    @staticmethod
-    def plot_training_progress(training_losses, vali_losses, interval=1):
-        title = "Development of training and validation loss"
-        xlabel = "Epoch"
-        ylabel = "Negative log probabability "
-
-        xvalues = np.arange(0, len(training_losses), interval)
-        plt.plot(xvalues[1:], training_losses[::interval][1:],
-                 label='training loss')
-        plt.plot(xvalues[1:], vali_losses[1:], label='validation loss')
-        plt.title(title)
-        plt.xlabel(xlabel)
-        plt.ylabel(ylabel)
-        plt.legend()
-        plt.show()
-        plt.close()
-
-    @staticmethod
-    def plot_run(contxt_idx, xvalues, funcvalues, target_y,
-                 target_x, mu, cov_matrix):
-        """plots the validation run, i.e. the true function, context points,
-        mean function and uncertainty
-        It makes also sure that the targetpoints and predictions are ordered
-        for propper plotting
-         """
-        batch_size = xvalues.shape[0]
-        idx_to_plot = np.random.randint(0, batch_size)
-        context_y_plot = funcvalues[idx_to_plot, contxt_idx, :].flatten().cpu()
-        context_x_plot = xvalues[idx_to_plot, contxt_idx, :].flatten().cpu()
-        y_plot = target_y[idx_to_plot].flatten().cpu().numpy()
-        x_plot = target_x[idx_to_plot].flatten().cpu().numpy()
-        var_plot = cov_matrix[idx_to_plot].flatten().cpu().numpy()
-        mu_plot = mu[idx_to_plot].flatten().cpu().numpy()
-
-        x_plot, y_plot, mu_plot, var_plot = Helper.sort_arrays(
-            x_plot,
-            y_plot,
-            mu_plot,
-            var_plot)
-
-        plt.scatter(x_plot, y_plot, color='red')
-        plt.plot(x_plot, mu_plot, color='blue')
-        plt.scatter(context_x_plot, context_y_plot, color='black')
-
-        plt.fill_between(x_plot, y1=mu_plot + var_plot,
-                         y2=mu_plot - var_plot, alpha=0.2)
-        plt.show()
-        plt.close()
-
 
 class HyperParam:
 

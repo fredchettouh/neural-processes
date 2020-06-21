@@ -18,6 +18,7 @@ def select_data(contxt_idx, func_idx, xvalues, funcvalues, batch_size):
     func_idx:
     contxt_idx :
     """
+
     num_contxt, num_trgt = len(contxt_idx), len(func_idx)
     context_x = xvalues[:, contxt_idx, :]
     context_y = funcvalues[:, contxt_idx, :]
@@ -51,11 +52,7 @@ def get_sample_indexes(
     if fix_num_contxt:
         num_contxt = max_contx//2
     else:
-        # TODO this is not implmented as in in the paper:
-        # num_target = tf.random_uniform(
-        # shape=(), minval=2, maxval=self._max_num_context, dtype=tf.int32)
-        # In emiel this is implemented without replacement and with num_targets
-        # not necceserraily being larger than num_contxt
+
         num_contxt = np.random.randint(min_contx, max_contx)
     num_trgts = np.random.randint(min_trgts, max_trgts)
     trgts_idx = np.random.choice(
@@ -174,7 +171,6 @@ class RegressionCNP:
                 both=False,
             )
         batch_size = xvalues.shape[0]
-
         num_contxt, num_trgt, target_x, target_y, context_x_stacked, \
         context_y_stacked, target_x_stacked = \
             select_data(

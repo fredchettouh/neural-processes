@@ -10,29 +10,12 @@ import argparse
 import numpy as np
 from .helpers import Helper
 from copy import copy
+from torchvision import datasets, transforms
+from itertools import product
 
 
 class DataGenerator:
-    """Takes a specific dimensions and a kernel argument and returns a dataset 
-    generated using the Kernel
-    Parameters:
-    -----------
-    xdim : int: Dimension of each x value
-        
-    ydim : int: Dimension of each y value
-        
-    range_x : tuple: min, max values of range on which to define the data
-    
-    num_instances : int : Number data instances to generate
-
-    steps: tuple: number of x values to create
-    """
-
-    def __init__(self, xdim=1, range_x=(None, None), steps=400):
-        self._xdim = xdim
-        self._xmin = range_x[0]
-        self._xmax = range_x[1]
-        self._steps = steps
+    pass
 
     def _create_shuffled_linspace(self):
         lspace = torch.linspace(self._xmin, self._xmax, self._steps)[:, None]
@@ -43,6 +26,13 @@ class DataGenerator:
             lspace = torch.cat((lspace, lspace_shuffled), dim=1)
 
         return lspace
+
+    def create_mnist_coordinates(self, width, height):
+        x_1 = np.arange(0, width)
+        x_2 = np.arange(0, height)
+        x_values = torch.Tensor(list(product(x_1, x_2)))
+        x_values = x_values[None, :, :]
+        return x_values
 
     def generate_curves(self):
         raise Exception('Not implemented as base level')
@@ -69,7 +59,11 @@ class DataGenerator:
 
 
 class GaussianProcess(DataGenerator):
-    pass
+    def __init__(self, xdim=1, range_x=(None, None), steps=400):
+        self._xdim = xdim
+        self._xmin = range_x[0]
+        self._xmax = range_x[1]
+        self._steps = steps
 
     def _rbf_kernel(self, length_scale, gamma, x):
         y = x
@@ -83,7 +77,7 @@ class GaussianProcess(DataGenerator):
         y_res = yrow.reshape(1, x.shape[0])
         # this creats the xy product
         xy = torch.mm(x, y.t())
-        # adding everything together of the form x^2+y^2-2xy scaling it 
+        # adding everything together of the form x^2+y^2-2xy scaling it
         kernel = torch.exp(-gamma * ((x_res + y_res - 2 * xy) / length_scale))
         return kernel
 
@@ -115,7 +109,12 @@ class GaussianProcess(DataGenerator):
 
 
 class PolynomialRegression(DataGenerator):
-    pass
+
+    def __init__(self, xdim=1, range_x=(None, None), steps=400):
+        self._xdim = xdim
+        self._xmin = range_x[0]
+        self._xmax = range_x[1]
+        self._steps = steps
 
     def generate_curves(
             self,
@@ -137,7 +136,6 @@ class PolynomialRegression(DataGenerator):
             num_instances = num_instances_vali
         elif purpose == 'test':
             num_instances = num_instances_test
-
         x_values = torch.normal(
             mean=mu_gen,
             std=sigma_gen,
@@ -163,23 +161,63 @@ class PolynomialRegression(DataGenerator):
         return x_values.float(), func_values.float()
 
 
+class TwoDImageRegression(DataGenerator):
 
-# class TwoDImageRegression:
-#     def __init__(self, width, height):
-#
-#
-#
+    def __init__(self,
+                 width,
+                 height,
+                 scale_mean=0.5,
+                 scale_std=0.5,
+                 link='~/.pytorch/MNIST_data/',
+                 share_train_data=0.8):
+        transform = transforms.Compose(
+            [
+                transforms.ToTensor(),
+                transforms.Normalize((scale_mean,), (scale_std,))
+            ])
 
-if __name__ == '__main__':
-    ap = argparse.ArgumentParser()
-    ap.add_argument("-num_instances", required=True,
-                    help="Number of curves to generate")
-    ap.add_argument("-noise", required=True,
-                    help="Noise to add to diagonal to make the Cholesky work")
-    ap.add_argument("-length_scale", required=True, help="Scaling parameter")
-    ap.add_argument("-gamma", required=True, help="Scaling parameter")
+        traindata = datasets.MNIST(
+            link, download=True, train=True, transform=transform).data
 
-    args = vars(ap.parse_args())
-    gen = DataGenerator()
-    x_values, data = gen.generate_curves(args['num_instances'], args['noise'],
-                                         args['length_scale'], args['gamma'])
+        self._testset = datasets.MNIST(
+            link, download=True, train=False, transform=transform).data
+
+        idx_train = int(len(traindata) * share_train_data)
+        self._trainset = traindata[0: idx_train]
+        self._valiset = traindata[idx_train:]
+
+        self._width = width
+        self._height = height
+
+    @staticmethod
+    def select_mnist_samples(tensor_list, num_instances, width, height):
+        max_idx = len(tensor_list)
+        idx = torch.randperm(max_idx)[:num_instances]
+        func_values = tensor_list[idx]
+        func_values = func_values.view(num_instances, width * height)
+        func_values = func_values[:, :, None]/255.0
+        return func_values
+
+    def generate_curves(
+            self,
+            num_instances_train=None,
+            num_instances_vali=None,
+            num_instances_test=None,
+            purpose=None):
+
+        if purpose == 'train':
+            num_instances = num_instances_train
+            tensor_list = self._trainset
+        elif purpose == 'vali':
+            num_instances = num_instances_vali
+            tensor_list = self._valiset
+        elif purpose == 'test':
+            num_instances = num_instances_test
+            tensor_list = self._testset
+
+        x_values = self.create_mnist_coordinates(self._width, self._height)
+        x_values = x_values.repeat(num_instances, 1, 1)
+        func_values = self.select_mnist_samples(
+            tensor_list, num_instances, self._width, self._height)
+
+        return x_values.float(), func_values.float()

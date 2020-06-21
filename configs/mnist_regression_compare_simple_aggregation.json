@@ -2,13 +2,13 @@
   "cnp_params": {
     "dimout": 2 ,
     "dimr": 128 ,
-    "dimx": 1 ,
+    "dimx": 2 ,
     "dimy": 1 ,
     "dropout": 0 ,
-    "max_contx": 10 ,
-    "max_funcs": 10 ,
-    "min_contx": 3 ,
-    "min_funcs": 2 ,
+    "max_contx": 200 ,
+    "max_funcs": 300 ,
+    "min_contx": 100 ,
+    "min_funcs": 200 ,
     "fix_num_contxt": false ,
     "num_layers_decoder": 3 ,
     "num_layers_encoder": 4 ,
@@ -21,16 +21,16 @@
   } ,
   "mu_gen": 0,
     "data_kwargs": {
-    "datagenerator": "cnp.datageneration.PolynomialRegression" ,
+    "datagenerator": "cnp.datageneration.TwoDImageRegression" ,
     "init_kwargs": {
-      "steps": 50 ,
-      "range_x": [-2 , 2] ,
-      "xdim": 1
+      "height": 28,
+      "link": "~/.pytorch/MNIST_data/",
+      "scale_mean": 0.5 ,
+      "scale_std": 0.5 ,
+      "share_train_data": 0.8 ,
+      "width": 28
     },
-    "sigma_gen": 5 ,
-    "mu_noise": 0 ,
-    "sigma_noise": 3 ,
-    "num_instances_train": 64 ,
+    "num_instances_train": 32 ,
     "num_instances_vali": 5 ,
     "num_instances_test": 1
   } ,
@@ -39,10 +39,11 @@
     "seed": null , "train_on_gpu": false
   } ,
   "train_kwargs": {
-    "batch_size_train": 64 ,
+    "batch_size_train": 32 ,
     "batch_size_vali": 5 ,
     "batch_size_test": 1 ,
     "plotting": true ,
-    "print_after": 100
+    "print_after": 100,
+    "plot_mode": "2d_greyscale"
   }
 }

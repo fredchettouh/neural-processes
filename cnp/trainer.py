@@ -5,12 +5,14 @@ from tqdm import tqdm
 from importlib import import_module
 import numpy as np
 from copy import copy
+import matplotlib.pyplot as plt
 
 # custom imports - WE SHOULD USE RELATIVE IMPORTS HERE
 # I.E. from .networks import Encoder, Decoder
 # HOWEVER THIS IS NOT POSSIBLE WITH GOOGLE COLAB
 
-from .helpers import Helper, Plotter
+from .helpers import Helper
+from .plotting import Plotter
 
 
 # TODO: optimizer has to become variable
@@ -62,9 +64,6 @@ class RegressionTrainer:
     def __init__(self,
                  data_kwargs,
                  cnp,
-                 dimx,
-                 range_x,
-                 dim_observation,
                  n_epochs=2000,
                  lr=0.001,
                  train_on_gpu=False,
@@ -86,28 +85,27 @@ class RegressionTrainer:
             self._cnp.decoder.cuda()
         data_kwargs = copy(data_kwargs)
         datagenerator = data_kwargs.pop('datagenerator')
-
+        # todo: take data generation out of trainer and make it a passable
+        # argument
         if datagenerator:
             package_name, method_name = datagenerator.rsplit('.', 1)
             package = import_module(package_name)
             method = getattr(package, method_name)
 
+            init_kwargs = data_kwargs.pop('init_kwargs')
             self._datagenerator = method(
-                xdim=dimx,
-                range_x=range_x,
-                steps=dim_observation)
+                **init_kwargs)
             self.data_kwargs = data_kwargs
 
         else:
             self._datagenerator = datagenerator
             package_name, method_name = \
                 'cnp.datageneration.DataGenerator'.rsplit('.', 1)
+            init_kwargs = data_kwargs.pop('init_kwargs')
             package = import_module(package_name)
             method = getattr(package, method_name)
-            self._base_datagenerator = method(
-                xdim=dimx,
-                range_x=range_x,
-                steps=dim_observation)
+
+            self._base_datagenerator = method(**init_kwargs)
 
             self._X_train, self._y_train, self._X_vali, self._y_vali = \
                 Helper.read_and_transform(
@@ -117,7 +115,7 @@ class RegressionTrainer:
                     seed=data_kwargs['seed']
                 )
 
-    def _validation_run(self, current_epoch, print_after, valiloader=None):
+    def _validation_run(self, current_epoch, plot_mode=None, valiloader=None):
 
         self._cnp.encoder.eval()
         self._cnp.decoder.eval()
@@ -160,19 +158,30 @@ class RegressionTrainer:
                 print(f'Validation loss for the function plotted: \
                 {round(vali_loss.item(), 3)}')
 
-                if print_after and not target_x.shape[-1] > 1:
-                    Plotter.plot_run(contxt_idx, xvalues,
-                                     funcvalues, target_y, target_x, mu,
-                                     sigma_transformed)
+                print(plot_mode)
+                if plot_mode == '1d_regression':
+                    Plotter.plot_context_target_1d(
+                        contxt_idx, xvalues,
+                        funcvalues, target_y, target_x, mu,
+                        sigma_transformed)
+
+                elif plot_mode == '2d_greyscale':
+                    Plotter.paint_greyscale_images_wrapper(
+                        contxt_idx, funcvalues, mu, width=28, height=28)
+
             return mean_vali_loss
 
-    def run_training(self, print_after=None, batch_size_train=None,
-                     batch_size_vali=None):
+    def run_training(
+            self, print_after=None,
+            batch_size_train=None,
+            plot_mode=None,
+            batch_size_vali=None):
 
         """This function performs one training run
         Parameters
         ----------
 
+        plot_mode
         print_after: boolean, optional: indicating if progress should be
         plotted
 
@@ -212,10 +221,8 @@ class RegressionTrainer:
         for epoch in tqdm(range(self._n_epochs), total=self._n_epochs):
 
             if self._datagenerator:  # generate data on the fly for every epoch
-
                 trainloader = self._datagenerator.generate_loader_on_fly(
                     batch_size_train, self.data_kwargs, purpose='train')
-
 
                 valiloader = self._datagenerator.generate_loader_on_fly(
                     batch_size_vali, self.data_kwargs, purpose='vali')
@@ -237,13 +244,11 @@ class RegressionTrainer:
                     xvalues = xvalues.unsqueeze(0)
                     funcvalues = funcvalues[None, :, None]
 
-
                 if self._train_on_gpu:
                     xvalues, funcvalues = xvalues.cuda(), funcvalues.cuda()
                 optimizer.zero_grad()
-
                 contxt_idx, xvalues, funcvalues, target_y, target_x, mu, \
-                    sigma_transformed, distribution = \
+                sigma_transformed, distribution = \
                     self._cnp.prep_and_pass(
                         xvalues, funcvalues, training=True)
 
@@ -263,14 +268,14 @@ class RegressionTrainer:
                     if valiloader:
                         mean_vali_loss.append(
                             self._validation_run(
-                                epoch, print_after, valiloader))
+                                epoch, plot_mode, valiloader))
                         self._cnp.encoder.train()
                         self._cnp.decoder.train()
                         if self._cnp.aggregator:
                             self._cnp.aggregator.train()
         if print_after:
-            Plotter.plot_training_progress(mean_epoch_loss, mean_vali_loss,
-                                           interval=print_after)
+            Plotter.plot_training_progress(
+                mean_epoch_loss, mean_vali_loss, interval=print_after)
             encoder_state_dict = self._cnp.encoder.state_dict()
             decoder_state_dict = self._cnp.decoder.state_dict()
             if self._cnp.aggregator:
@@ -278,7 +283,7 @@ class RegressionTrainer:
             else:
                 aggregator_state_dict = None
 
-        return encoder_state_dict, decoder_state_dict, aggregator_state_dict,\
+        return encoder_state_dict, decoder_state_dict, aggregator_state_dict, \
                mean_epoch_loss, mean_vali_loss
 
     def run_test(
@@ -329,7 +334,7 @@ class RegressionTrainer:
             for xvalues, funcvalues in testloader:
 
                 contxt_idx, xvalues, funcvalues, target_y, target_x, mu, \
-                    sigma_transformed, distribution = \
+                sigma_transformed, distribution = \
                     self._cnp.prep_and_pass(
                         xvalues, funcvalues, training=False)
 
