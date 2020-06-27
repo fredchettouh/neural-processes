@@ -1,11 +1,17 @@
 import torch
 from torch import nn
 
+
 # Todo allow for different activation function
-def create_linear_layer(layer_specs, index, dropout, activation):
+def create_linear_layer(
+        layer_specs, index, dropout, activation, batch_norm=False):
     """
+    Creates a linear layer automatically given specification.
+    Returns a list with all object specified for this particular layer
     Parameters
     ----------
+    batch_norm: bool: indicating whether batch_normalization should be used
+    activation: object: activation function object to be used in this layer
     index: int: Indicates at which layer in the layer architecture
     specification the model currently is
 
@@ -14,17 +20,22 @@ def create_linear_layer(layer_specs, index, dropout, activation):
 
     dropout: float: specifies the dropout probability to be used in the dropout
         layer
-
-    returns a list of length one with the layer of the network specified
     """
     lin_layer = nn.Linear(layer_specs[index], layer_specs[index + 1])
     activation_function = activation
     dropout_layer = nn.Dropout(p=dropout)
 
+    layer_object = [lin_layer, activation_function]
+
+    if batch_norm:
+        layer_object.append(nn.BatchNorm1d(layer_specs[index + 1]))
+
     if dropout:
-        return [lin_layer, activation_function, dropout_layer]
-    else:
-        return [lin_layer, activation_function]
+        layer_object.append(dropout_layer)
+        # return [lin_layer, activation_function, dropout_layer]
+    # else:
+    #     return [lin_layer, activation_function]
+    return layer_object
 
 
 def simple_aggregation(encoding, aggregation_operation):
@@ -36,7 +47,6 @@ def simple_aggregation(encoding, aggregation_operation):
     elif aggregation_operation == 'sum':
         aggregated_encoding = encoding.sum(1)
 
-
     aggregated_encoding = aggregated_encoding.unsqueeze(1)
 
     return aggregated_encoding
@@ -45,13 +55,13 @@ def simple_aggregation(encoding, aggregation_operation):
 class BasicMLP(nn.Module):
 
     def __init__(self, insize, num_layers, num_neurons, dimout, dropout=0,
-                 activation='nn.ReLU()'):
+                 activation='nn.ReLU()', batch_norm=False):
         super().__init__()
         # todo add dropout to first layer and add batch normalization
 
         self._insize = insize
-        self._num_layers = num_layers
-        self._num_neurons = num_neurons
+        # self._num_layers = num_layers
+        # self._num_neurons = num_neurons
         self._dimout = dimout
         self._dropout = dropout
 
@@ -63,6 +73,8 @@ class BasicMLP(nn.Module):
             nn.Linear(self._insize, self._hidden_layers[0]),
             activation]
 
+        if batch_norm:
+            _first_layer.append(nn.BatchNorm1d(self._hidden_layers[0]))
         if dropout:
             _first_layer.append(nn.Dropout(p=dropout))
 
@@ -109,8 +121,11 @@ class Encoder(BasicMLP):
 
     """
 
-    def __init__(self, insize, num_layers, num_neurons, dimout, dropout=0):
-        super().__init__(insize, num_layers, num_neurons, dimout, dropout)
+    def __init__(self, insize, num_layers, num_neurons, dimout, dropout=0,
+                 activation='nn.ReLU()', batch_norm=False):
+        super().__init__(
+            insize, num_layers, num_neurons, dimout, dropout, activation,
+            batch_norm)
 
     def forward(self, x_values, y_values):
         """
@@ -120,6 +135,7 @@ class Encoder(BasicMLP):
 
         y_values: torch.Tensor: Shape (batch_size, dimy)
         """
+
         input_as_pairs = torch.cat((x_values, y_values), dim=1)
         return self._process_input(input_as_pairs)
 
@@ -150,8 +166,10 @@ class Decoder(BasicMLP):
     num_neurons: int: Number of Neurons for each hidden layer
     """
 
-    def __init__(self, insize, num_layers, num_neurons, dimout, dropout=0):
-        super().__init__(insize, num_layers, num_neurons, dimout, dropout)
+    def __init__(self, insize, num_layers, num_neurons, dimout, dropout=0,
+                 activation='nn.ReLU()', batch_norm=False):
+        super().__init__(insize, num_layers, num_neurons, dimout, dropout,
+                         activation, batch_norm)
 
     def forward(self, x_values, r_values):
         """Takes x and r values, combines them and passes them twice to MLP.
@@ -180,7 +198,8 @@ class BasicMLPAggregator(BasicMLP):
 
     """
 
-    def __init__(self, insize, num_layers, num_neurons, dimout, dropout=0):
+    def __init__(self, insize, num_layers, num_neurons, dimout, dropout=0,
+                 activation='nn.ReLU()', batch_norm=False):
         """
 
         Parameters
@@ -194,7 +213,8 @@ class BasicMLPAggregator(BasicMLP):
         dropout : int
 
         """
-        super().__init__(insize, num_layers, num_neurons, dimout, dropout)
+        super().__init__(insize, num_layers, num_neurons, dimout, dropout,
+                         activation, batch_norm)
 
         self.softmax = nn.Softmax(dim=1)
 
@@ -238,8 +258,10 @@ class BasicMLPAggregator(BasicMLP):
 class GatedMLPAggregator(nn.Module):
     def __init__(self, insize, dimout, num_layers=2,
                  num_neurons=128,
-                 dropout=0):
-
+                 dropout=0,
+                 activation='nn.ReLU()',
+                 batch_norm=False
+                 ):
         super().__init__()
 
         self.attention = BasicMLP(
@@ -247,7 +269,9 @@ class GatedMLPAggregator(nn.Module):
             dimout=num_neurons,
             num_layers=num_layers,
             num_neurons=num_neurons,
-            dropout=dropout
+            dropout=dropout,
+            activation=activation,
+            batch_norm=batch_norm
         )
 
         self.gate = BasicMLP(
@@ -255,7 +279,9 @@ class GatedMLPAggregator(nn.Module):
             dimout=num_neurons,
             num_layers=num_layers,
             num_neurons=num_neurons,
-            dropout=dropout
+            dropout=dropout,
+            activation=activation,
+            batch_norm=batch_norm
         )
 
         self.sigmoid = nn.Sigmoid()
@@ -388,7 +414,6 @@ class MLPAggregator(BaseAggregator):
         _ = None
 
         return output, _
-
 
 class AggrRNN(BaseAggregator):
     # TODO is there a change if we feed a different shape to the

@@ -13,25 +13,27 @@ def test_simple_aggregation():
 
 
 def test_BasicMLP():
-    mlp = BasicMLP(10, 5, 128, 1, 0)
+    mlp = BasicMLP(10, 5, 128, 1, 0,
+                   activation='nn.ReLU()', batch_norm=True)
     children = list(mlp.children())[0]
-    assert (len(children) == 9)
+    assert (len(children) == 10)
     assert (children[0].in_features == 10)
     assert (children[-1].out_features == 1)
 
 
 def test_Encoder():
-    encoder = Encoder(10, 5, 128, 1, 0)
+    encoder = Encoder(10, 5, 128, 1, 0,
+                      activation='nn.ReLU()', batch_norm=True)
     children = list(encoder.children())[0]
-    assert (len(children) == 9)
+    assert (len(children) == 10)
     assert (children[0].in_features == 10)
     assert (children[-1].out_features == 1)
 
 
 def test_Decoder():
-    decoder = Decoder(10, 5, 128, 1, 0)
+    decoder = Decoder(10, 5, 128, 1, 0, batch_norm=True)
     children = list(decoder.children())[0]
-    assert (len(children) == 9)
+    assert (len(children) == 10)
     assert (children[0].in_features == 10)
     assert (children[-1].out_features == 1)
 
@@ -45,6 +47,7 @@ def test_BasicMLPAggregator():
     batch_size, _, dim_encoding = aggregation.size()
     assert (batch_size == 64)
     assert (dim_encoding == 128)
+
 
 def test_GatedMLPAggregator():
     encoding = torch.randn(64, 5, 128)

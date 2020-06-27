@@ -1,6 +1,7 @@
 from cnp.datageneration import PolynomialRegression, \
-    GaussianProcess, TwoDImageRegression
+    GaussianProcess, TwoDImageRegression, PairwiseKernel
 
+import numpy as np
 
 def test_PolynomialRegression():
     num_instances = 64
@@ -103,3 +104,33 @@ def test_TwoDImageRegression():
 
     assert(batch_size == 64 and num_pixels == mnist._width * mnist._height)
     assert(batch_size_y == 64 and num_pixels_y == mnist._width * mnist._height)
+
+def test_PairwiseKernel():
+
+
+    generator = PairwiseKernel(
+        xdim=1,
+        range_x=(-2, 2),
+        steps=400)
+
+    noise = 0.004
+    num_instances_train = 64
+
+    x_values, func_x = generator.generate_curves(
+        kernel_name='linear',
+        noise=noise,
+        num_instances_train=num_instances_train,
+        num_instances_vali=None,
+        num_instances_test=None,
+        purpose='train')
+
+    batch_size_x, num_obs_x, dim_x = x_values.size()
+    batch_size_func, num_obs_func, dim_func = func_x.size()
+
+    assert(batch_size_x == num_instances_train)
+    assert(num_obs_x == 400)
+    assert(dim_x == 1)
+
+    assert (batch_size_func == num_instances_train)
+    assert (num_obs_func == 400)
+    assert (dim_func == 1)

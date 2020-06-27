@@ -12,6 +12,7 @@ from .helpers import Helper
 from copy import copy
 from torchvision import datasets, transforms
 from itertools import product
+from sklearn.metrics import pairwise
 
 
 class DataGenerator:
@@ -195,7 +196,7 @@ class TwoDImageRegression(DataGenerator):
         idx = torch.randperm(max_idx)[:num_instances]
         func_values = tensor_list[idx]
         func_values = func_values.view(num_instances, width * height)
-        func_values = func_values[:, :, None]/255.0
+        func_values = func_values[:, :, None] / 255.0
         return func_values
 
     def generate_curves(
@@ -221,3 +222,48 @@ class TwoDImageRegression(DataGenerator):
             tensor_list, num_instances, self._width, self._height)
 
         return x_values.float(), func_values.float()
+
+
+class PairwiseKernel(DataGenerator):
+    def __init__(self, xdim, range_x, steps):
+        self._xdim = xdim
+        self._xmin = range_x[0]
+        self._xmax = range_x[1]
+        self._steps = steps
+
+    def generate_curves(
+            self,
+            kernel_name,
+            noise,
+            num_instances_train=None,
+            num_instances_vali=None,
+            num_instances_test=None,
+            purpose=None, **kwargs):
+
+        x_values = self._create_shuffled_linspace()
+        kernel = torch.tensor(
+            pairwise.pairwise_kernels(
+                x_values, x_values,
+                kernel_name, kwargs),
+            dtype=torch.float64)
+
+        kernel = kernel + torch.eye(self._steps) * noise
+        datasets = []
+        if purpose == 'train':
+            num_instances = num_instances_train
+        elif purpose == 'vali':
+            num_instances = num_instances_vali
+        elif purpose == 'test':
+            num_instances = num_instances_test
+
+        for _ in range(num_instances):
+            # creating as many standard
+            standard_normals = torch.normal(0, 1, (self._steps, 1))
+            func_x = kernel.float() @ standard_normals.float()
+            datasets.append(func_x)
+
+        datasets = Helper.list_np_to_tensor(datasets)
+        x_values = x_values.repeat(datasets.shape[0], 1, 1)
+
+        return x_values, datasets
+
