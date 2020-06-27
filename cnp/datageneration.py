@@ -1,12 +1,6 @@
 #!/usr/bin/env python
 
-
-## Todo: rewrite kernel so that it works for higher order tensors
-# Todo: add seeds to make experiments comparable
-
-
 import torch
-import argparse
 import numpy as np
 from .helpers import Helper
 from copy import copy
@@ -266,4 +260,3 @@ class PairwiseKernel(DataGenerator):
         x_values = x_values.repeat(datasets.shape[0], 1, 1)
 
         return x_values, datasets
-

@@ -33,9 +33,9 @@ class Helper:
         X_vali, y_vali = vali.drop(labels=['target'], axis=1).to_numpy(
             np.float64), vali['target'].to_numpy(np.float64)
         X_train, y_train = torch.from_numpy(X_train).float(), \
-                           torch.from_numpy(y_train).float()
+            torch.from_numpy(y_train).float()
         X_vali, y_vali = torch.from_numpy(X_vali).float(), \
-                         torch.from_numpy(y_vali).float()
+            torch.from_numpy(y_vali).float()
         return X_train, y_train, X_vali, y_vali
 
     @staticmethod
@@ -76,10 +76,11 @@ class Helper:
     def transform_var(var_tensor):
 
         """This function takes a learned variance tensor and transforms
-        it following the methodology in Empirical Evaluation of Neural Process Objectives.
-        This ensures that the covariance matrix is positive definite and a multivariate
-        Gaussian can be constructed.
-        Next it pads the diagonal with zeroes to create a covariance matrix for sampling.
+        it following the methodology in Empirical Evaluation of Neural Process
+         Objectives. This ensures that the covariance matrix is positive
+         definite and a multivariate Gaussian can be constructed.
+        Next it pads the diagonal with zeroes to create a covariance matrix for
+        sampling.
        """
         transformed_variance = 0.1 + 0.9 * softplus(var_tensor)
 
@@ -93,7 +94,6 @@ class Helper:
         ----------
         model :
         """
-        x = 0.5
         if type(model) == nn.Linear:
             nn.init.uniform_(model.weight, -0.05, 0.05)
             nn.init.uniform_(model.bias, -0.05, 0.05)
@@ -118,7 +118,8 @@ class Helper:
         minute = str(current_date.minute).zfill(2)
         date_time = f"{year}_{month}_{day}_{hour}_{minute}"
 
-        new_dir_name = os.path.join(directory, f"{experiment_name}_{date_time}")
+        new_dir_name = os.path.join(
+            directory, f"{experiment_name}_{date_time}")
         os.mkdir(new_dir_name)
         for arg in args:
             if arg[1]:
@@ -135,10 +136,11 @@ class Helper:
                     with open(file_name, 'w') as file:
                         json.dump(arg[0], file)
 
-class HyperParam:
 
-    def train_evaluate(parameterization):
-        trainer = Experiment(**parameterization)
-        weights = trainer.run_training(trainloader)
-        evaluation = trainer.run_test(weights, valiloader)
-        return evaluation
+# class HyperParam:
+#
+#     def train_evaluate(parameterization):
+#         trainer = Experiment(**parameterization)
+#         weights = trainer.run_training(trainloader)
+#         evaluation = trainer.run_test(weights, valiloader)
+#         return evaluation

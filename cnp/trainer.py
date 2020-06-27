@@ -5,11 +5,6 @@ from tqdm import tqdm
 from importlib import import_module
 import numpy as np
 from copy import copy
-import matplotlib.pyplot as plt
-
-# custom imports - WE SHOULD USE RELATIVE IMPORTS HERE
-# I.E. from .networks import Encoder, Decoder
-# HOWEVER THIS IS NOT POSSIBLE WITH GOOGLE COLAB
 
 from .helpers import Helper
 from .plotting import Plotter
@@ -44,8 +39,8 @@ class RegressionTrainer:
 
     dimr: tuple: Dimension of the encoding
 
-    dimout: int: Dimensionality of the ouput of the decoder, e.g. batch_size,1,2
-    for the one d regression case
+    dimout: int: Dimensionality of the ouput of the decoder,
+    e.g. batch_size,1,2 for the one d regression case
 
     num_layers: int: Dimension of hidden layers
 
@@ -248,7 +243,7 @@ class RegressionTrainer:
                     xvalues, funcvalues = xvalues.cuda(), funcvalues.cuda()
                 optimizer.zero_grad()
                 contxt_idx, xvalues, funcvalues, target_y, target_x, mu, \
-                sigma_transformed, distribution = \
+                    sigma_transformed, distribution = \
                     self._cnp.prep_and_pass(
                         xvalues, funcvalues, training=True)
 
@@ -283,8 +278,8 @@ class RegressionTrainer:
             else:
                 aggregator_state_dict = None
 
-        return encoder_state_dict, decoder_state_dict, aggregator_state_dict, \
-               mean_epoch_loss, mean_vali_loss
+        return encoder_state_dict, decoder_state_dict, aggregator_state_dict,\
+            mean_epoch_loss, mean_vali_loss
 
     def run_test(
             self, encoder_state_dict, decoder_state_dict,
@@ -334,7 +329,7 @@ class RegressionTrainer:
             for xvalues, funcvalues in testloader:
 
                 contxt_idx, xvalues, funcvalues, target_y, target_x, mu, \
-                sigma_transformed, distribution = \
+                    sigma_transformed, distribution = \
                     self._cnp.prep_and_pass(
                         xvalues, funcvalues, training=False)
 

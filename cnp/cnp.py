@@ -35,7 +35,7 @@ def select_data(contxt_idx, func_idx, xvalues, funcvalues, batch_size):
     context_y_stacked = context_y.view(batch_size * num_contxt, -1)
     target_x_stacked = target_x.view(batch_size * num_trgt, -1)
     return num_contxt, num_trgt, target_x, target_y, context_x_stacked, \
-           context_y_stacked, target_x_stacked
+        context_y_stacked, target_x_stacked
 
 
 def get_sample_indexes(
@@ -214,16 +214,16 @@ class RegressionCNP:
             )
         batch_size = xvalues.shape[0]
         num_contxt, num_trgt, target_x, target_y, context_x_stacked, \
-        context_y_stacked, target_x_stacked = \
+            context_y_stacked, target_x_stacked = \
             select_data(
                 contxt_idx, func_idx, xvalues, funcvalues, batch_size)
 
         return num_contxt, num_trgt, target_x, target_y, context_x_stacked, \
-               context_y_stacked, target_x_stacked, batch_size, contxt_idx
+            context_y_stacked, target_x_stacked, batch_size, contxt_idx
 
     def network_pass(
             self, context_x_stacked, context_y_stacked, target_x_stacked,
-            batch_size, num_trgt, num_contxt, hidden=None):
+            batch_size, num_trgt, num_contxt):
         """
         Function that passes the sampled context points though the encoder
         the aggregation process and then through the decoder
@@ -231,8 +231,6 @@ class RegressionCNP:
         distribution object parameterized by them.
         Parameters
         ----------
-        hidden: tensor: not currently used put passed through in case
-                        networks with hidden states are implemented
         num_contxt: number of context points
         num_trgt: int: number of target points
         batch_size: int: number of tasks given per batch
@@ -248,7 +246,6 @@ class RegressionCNP:
         encoding_batch_view = encoding.view(batch_size, num_contxt, -1)
 
         if self._aggregator:
-            # todo we need to figureout here what to do with hidden
             aggregated_enconding = self._aggregator(
                 encoding_batch_view)
         else:
@@ -274,7 +271,7 @@ class RegressionCNP:
     def prep_and_pass(self, xvalues, funcvalues, training=True,
                       ):
         num_contxt, num_trgt, target_x, target_y, context_x_stacked, \
-        context_y_stacked, target_x_stacked, batch_size, contxt_idx = \
+            context_y_stacked, target_x_stacked, batch_size, contxt_idx = \
             self.prep_data(xvalues, funcvalues, training)
 
         mu, sigma_transformed, distribution = self.network_pass(
@@ -282,7 +279,7 @@ class RegressionCNP:
             batch_size, num_trgt, num_contxt)
 
         return contxt_idx, xvalues, funcvalues, target_y, target_x, mu, \
-               sigma_transformed, distribution
+            sigma_transformed, distribution
 
     @property
     def decoder(self):
