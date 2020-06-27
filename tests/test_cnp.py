@@ -53,7 +53,7 @@ def test_select_data():
         context_idx = np.random.randint(1, steps, n_context)
         target_idx = np.random.randint(1, steps, n_targets)
         num_contxt, num_trgt, target_x, target_y, context_x_stacked, \
-        context_y_stacked, target_x_stacked = \
+            context_y_stacked, target_x_stacked = \
             select_data(context_idx, target_idx, x_values, func_x, batch_size)
 
         assert (num_contxt == n_context)
@@ -105,7 +105,7 @@ def test_RegressionCNP():
         )
 
         num_contxt, num_trgt, target_x, target_y, context_x_stacked, \
-        context_y_stacked, target_x_stacked, batch_size, contxt_idx = \
+            context_y_stacked, target_x_stacked, batch_size, contxt_idx = \
             regressor.prep_data(
                 xvalues=xvalues, funcvalues=y_values, training=True)
 

@@ -1,7 +1,6 @@
 from cnp.datageneration import PolynomialRegression, \
     GaussianProcess, TwoDImageRegression, PairwiseKernel
 
-import numpy as np
 
 def test_PolynomialRegression():
     num_instances = 64
@@ -69,7 +68,6 @@ def test_GaussianProcess():
     purposes = ['train', 'vali', 'test']
 
     for d, s, p, nm in zip(xdim, steps, purposes, num_instances):
-
         gp = GaussianProcess(xdim=d, range_x=(xmin, xmax), steps=s)
 
         x_values, func_x = gp.generate_curves(
@@ -90,24 +88,25 @@ def test_TwoDImageRegression():
         link='~/.pytorch/MNIST_data/',
         share_train_data=0.8)
 
-    assert(len(mnist._trainset) == 48000)
-    assert(len(mnist._valiset) == 12000)
+    assert (len(mnist._trainset) == 48000)
+    assert (len(mnist._valiset) == 12000)
 
     x_values, func_x = mnist.generate_curves(
-            num_instances_train=64,
-            num_instances_vali=None,
-            num_instances_test=None,
-            purpose='train')
+        num_instances_train=64,
+        num_instances_vali=None,
+        num_instances_test=None,
+        purpose='train')
 
     batch_size, num_pixels, dim = x_values.size()
     batch_size_y, num_pixels_y, dim_y = x_values.size()
 
-    assert(batch_size == 64 and num_pixels == mnist._width * mnist._height)
-    assert(batch_size_y == 64 and num_pixels_y == mnist._width * mnist._height)
+    assert (batch_size == 64 and num_pixels == mnist._width * mnist._height)
+    assert (
+            batch_size_y == 64 and num_pixels_y == mnist._width * mnist._height
+    )
+
 
 def test_PairwiseKernel():
-
-
     generator = PairwiseKernel(
         xdim=1,
         range_x=(-2, 2),
@@ -127,9 +126,9 @@ def test_PairwiseKernel():
     batch_size_x, num_obs_x, dim_x = x_values.size()
     batch_size_func, num_obs_func, dim_func = func_x.size()
 
-    assert(batch_size_x == num_instances_train)
-    assert(num_obs_x == 400)
-    assert(dim_x == 1)
+    assert (batch_size_x == num_instances_train)
+    assert (num_obs_x == 400)
+    assert (dim_x == 1)
 
     assert (batch_size_func == num_instances_train)
     assert (num_obs_func == 400)
