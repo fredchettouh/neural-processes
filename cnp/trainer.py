@@ -13,47 +13,19 @@ from .plotting import Plotter
 # TODO: optimizer has to become variable
 # else I cannot pass different aggregators to it
 
-
 class RegressionTrainer:
     """
-    This class orchestrates the training, validation and test of the CNP
+    This class orchestrates the training, validation and test of the
+    few shot conditional neural process
     Parameters
     ----------
+    data_kwargs: dict: key value arguments to be passed to data generation
+    cnp: object: The conditional neural process instant to use for training
     n_epochs: int: Number of training iterations to run
     lr: float: Learning rate for the Solver
-
-    min_funcs: int: Minimum number of target values to sample
-
-    max_funcs: int: Minimum number of target values to sample
-
-    max_contx: int: Minimum number of context values to sample
-
-    min_contx: int: Minimum number of context values to sample
-
-    dim_observation: int: Number of observations of each "joint target" that
-    =means of each function
-
-    dimx: int: Dimension of each x value
-
-    dimy: int: Dimension of each y value
-
-    dimr: tuple: Dimension of the encoding
-
-    dimout: int: Dimensionality of the ouput of the decoder,
-    e.g. batch_size,1,2 for the one d regression case
-
-    num_layers: int: Dimension of hidden layers
-
-    num_neurons: int: Number of Neurons for each hidden layer
-
     train_on_gpu: boolean: Indicating whether or not a GPU is available
+    seed: int: the seed to use for reproduciability
 
-    print_after: int: Indication of the we want to have a validation run
-
-    generatedata: boolean, optional: If True, data will be generated using the
-    Datagenerator
-
-    datagen_params: Dict, optional: Contains the parameters for data generation
     """
 
     def __init__(self,
@@ -80,9 +52,9 @@ class RegressionTrainer:
             self._cnp.decoder.cuda()
         data_kwargs = copy(data_kwargs)
         datagenerator = data_kwargs.pop('datagenerator')
-        # todo: take data generation out of trainer and make it a passable
-        # argument
+
         if datagenerator:
+            # data generator is imported dynamically
             package_name, method_name = datagenerator.rsplit('.', 1)
             package = import_module(package_name)
             method = getattr(package, method_name)
@@ -93,6 +65,7 @@ class RegressionTrainer:
             self.data_kwargs = data_kwargs
 
         else:
+            # data is read in from existing file and transformed
             self._datagenerator = datagenerator
             package_name, method_name = \
                 'cnp.datageneration.DataGenerator'.rsplit('.', 1)
@@ -111,6 +84,23 @@ class RegressionTrainer:
                 )
 
     def _validation_run(self, current_epoch, plot_mode=None, valiloader=None):
+        """
+
+        Parameters
+        ----------
+        Performs a validation run and plotts the proceddings if indicated
+        Returns the mean validation loss which is the negative
+        log probability, i.e. the probability that the targets where produced
+        by the distribution parameterized by the predicted mean and variance.
+
+        current_epoch: int: indicates the epoch the training process is
+         currently in
+        plot_mode: str: defines the type of plot, i.e. none, 1d regression
+        or greyscale image. can be continued to allow for different plotes
+        valiloader: object: torch data loader expected to be passed down
+        by train_run
+
+        """
 
         self._cnp.encoder.eval()
         self._cnp.decoder.eval()
@@ -167,26 +157,27 @@ class RegressionTrainer:
             return mean_vali_loss
 
     def run_training(
-            self, print_after=None,
+            self,
+            print_after=None,
             batch_size_train=None,
             plot_mode=None,
-            batch_size_vali=None):
+            batch_size_vali=None,
+            plot_progress=True):
 
-        """This function performs one training run
+        """
+        This function performs the training of the conditional neural process
+        This also includes the data generation on the fly or sampling from
+        a distribution of tasks (images, different functions etc.)
+        Returns the model parameters for the encoder, decoder and aggregator
+        as well as the mean losses and training losses
         Parameters
         ----------
 
-        plot_mode
+        plot_mode: str:
         print_after: boolean, optional: indicating if progress should be
-        plotted
-
         batch_size_train: batch size of data
 
         batch_size_vali: batch size of data
-
-        **kwargs: dict, takes key value pair data depening on wether data
-        is generated on the fly or read in.
-
         """
         if self._seed:
             Helper.set_seed(self._seed)
@@ -268,15 +259,15 @@ class RegressionTrainer:
                         self._cnp.decoder.train()
                         if self._cnp.aggregator:
                             self._cnp.aggregator.train()
-        if print_after:
+        if plot_progress:
             Plotter.plot_training_progress(
                 mean_epoch_loss, mean_vali_loss, interval=print_after)
-            encoder_state_dict = self._cnp.encoder.state_dict()
-            decoder_state_dict = self._cnp.decoder.state_dict()
-            if self._cnp.aggregator:
-                aggregator_state_dict = self._cnp.aggregator.state_dict()
-            else:
-                aggregator_state_dict = None
+        encoder_state_dict = self._cnp.encoder.state_dict()
+        decoder_state_dict = self._cnp.decoder.state_dict()
+        if self._cnp.aggregator:
+            aggregator_state_dict = self._cnp.aggregator.state_dict()
+        else:
+            aggregator_state_dict = None
 
         return encoder_state_dict, decoder_state_dict, aggregator_state_dict,\
             mean_epoch_loss, mean_vali_loss
@@ -284,18 +275,17 @@ class RegressionTrainer:
     def run_test(
             self, encoder_state_dict, decoder_state_dict,
             aggregator_state_dict, batch_size_test, X_test=None, y_test=None,
-            plotting=True):
+            plot_mode=None):
         """This function performs one test run
                 Parameters
                 ----------
+                plotting
                 y_test
                 X_test
                 aggregator_state_dict
                 decoder_state_dict
                 encoder_state_dict
-                state_dict_decoder
-                state_dict_encoder
-                plotting
+                plot_mode
                 batch_size_test
                 kwargs
                 testloader: torch.utils.data.DataLoader: iterable object that
@@ -335,10 +325,15 @@ class RegressionTrainer:
 
                 mse = ((mu - target_y) ** 2).mean(1).mean(0)
                 running_mse += mse.item()
-                if plotting:
-                    Plotter.plot_run(
-                        contxt_idx, xvalues, funcvalues, target_y, target_x,
-                        mu, sigma_transformed)
+                if plot_mode == '1d_regression':
+                    Plotter.plot_context_target_1d(
+                        contxt_idx, xvalues,
+                        funcvalues, target_y, target_x, mu,
+                        sigma_transformed)
+
+                elif plot_mode == '2d_greyscale':
+                    Plotter.paint_greyscale_images_wrapper(
+                        contxt_idx, funcvalues, mu, width=28, height=28)
             else:
                 test_set_mse = running_mse / len(testloader)
                 return test_set_mse
