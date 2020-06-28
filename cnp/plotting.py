@@ -52,9 +52,7 @@ class Plotter:
         It makes also sure that the targetpoints and predictions are ordered
         for propper plotting
          """
-        # batch_size = xvalues.shape[0]
-        # idx_to_plot = np.random.randint(0, batch_size)
-        # simply taking the last from the validation batch so show
+
         context_y_plot = funcvalues[-1, contxt_idx, :].flatten().cpu()
         context_x_plot = xvalues[-1, contxt_idx, :].flatten().cpu()
         y_plot = target_y[-1].flatten().cpu().numpy()
