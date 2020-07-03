@@ -66,7 +66,7 @@ class Plotter:
             mu_plot,
             var_plot)
 
-        plt.scatter(x_plot, y_plot, color='red')
+        plt.plot(x_plot, y_plot, color='red')
         plt.plot(x_plot, mu_plot, color='blue')
         plt.scatter(context_x_plot, context_y_plot, color='black')
 

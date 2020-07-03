@@ -39,8 +39,8 @@ def select_data(contxt_idx, func_idx, xvalues, funcvalues, batch_size):
 
 
 def get_sample_indexes(
-        min_contx, max_contx, min_trgts, max_trgts, dim_observation, both=True,
-        fix_num_contxt=False):
+        min_contx, max_contx, min_trgts, max_trgts, dim_observation,
+        both=True):
     """
     Samples a random number and indexes for context and target points
     during training and at test time.  Note that the target points always i
@@ -59,19 +59,23 @@ def get_sample_indexes(
                     fixed t every iteration
     """
 
-    if fix_num_contxt:
+    if not both:
+        trgts_idx = np.arange(0, dim_observation)
         num_contxt = max_contx // 2
-    else:
+        contxt_idx = np.random.permutation(dim_observation)[:num_contxt]
 
-        num_contxt = np.random.randint(min_contx, max_contx)
-    num_trgts = np.random.randint(min_trgts, max_trgts)
-    trgts_idx = np.random.choice(
-        np.arange(0, dim_observation), num_trgts, replace=False)
-    contxt_idx = trgts_idx[:num_contxt]
-    if both:
-        return trgts_idx, contxt_idx
     else:
-        return np.arange(0, dim_observation), contxt_idx
+        num_contxt = np.random.randint(min_contx, max_contx)
+        num_trgts = np.random.randint(min_trgts, max_trgts)
+        trgts_idx = np.random.choice(
+            np.arange(0, dim_observation),
+            num_contxt+num_trgts, replace=False)
+
+        contxt_idx = trgts_idx[:num_contxt]
+
+    return trgts_idx, contxt_idx
+    # else:
+    #     return np.arange(0, dim_observation), contxt_idx
 
 
 def format_encoding(encoding, batch_size, num_trgt):
@@ -130,7 +134,6 @@ class RegressionCNP:
             max_funcs,
             max_contx,
             min_contx,
-            fix_num_contxt,
             dimx,
             dimy,
             dimr,
@@ -147,7 +150,9 @@ class RegressionCNP:
             insize=dimx + dimy,
             num_layers=num_layers_encoder,
             num_neurons=num_neurons_encoder,
-            dimout=dimr)
+            dimout=dimr,
+            dropout=dropout
+        )
 
         self._decoder = Decoder(
             insize=dimx + dimr,
@@ -173,15 +178,17 @@ class RegressionCNP:
             self.simple_aggregator_type = aggregation_kwargs[
                 "simple_aggregator_type"
             ]
-
-        print(self._aggregator)
+        if self._aggregator:
+            print(self._aggregator)
+        else:
+            print(
+                f"Aggregation using {self.simple_aggregator_type} operation")
 
         self._sample_specs_kwargs = {
             "min_trgts": min_funcs,
             "max_trgts": max_funcs,
             "max_contx": max_contx,
             "min_contx": min_contx,
-            "fix_num_contxt": fix_num_contxt
         }
 
     def prep_data(self, xvalues, funcvalues, training=True,
@@ -273,7 +280,6 @@ class RegressionCNP:
         num_contxt, num_trgt, target_x, target_y, context_x_stacked, \
             context_y_stacked, target_x_stacked, batch_size, contxt_idx = \
             self.prep_data(xvalues, funcvalues, training)
-
         mu, sigma_transformed, distribution = self.network_pass(
             context_x_stacked, context_y_stacked, target_x_stacked,
             batch_size, num_trgt, num_contxt)

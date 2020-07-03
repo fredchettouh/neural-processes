@@ -79,17 +79,24 @@ class GaussianProcess(DataGenerator):
     def generate_curves(self, noise=1e-4, length_scale=0.4, gamma=1,
                         num_instances_train=None, num_instances_vali=None,
                         num_instances_test=None, purpose=None):
-        x_values = self._create_shuffled_linspace()
-        kernel = self._rbf_kernel(length_scale, gamma, x_values)
-        kernel = kernel + torch.eye(self._steps) * noise
-        cholesky_decomp = torch.cholesky(kernel)
+
         datasets = []
         if purpose == 'train':
             num_instances = num_instances_train
+            x_values = Helper.scale_shift_uniform(
+                self._xmin, self._xmax, *(self._steps, self._xdim)).float()
+
         elif purpose == 'vali':
             num_instances = num_instances_vali
+            x_values = self._create_shuffled_linspace()
+
         elif purpose == 'test':
             num_instances = num_instances_test
+            x_values = self._create_shuffled_linspace()
+
+        kernel = self._rbf_kernel(length_scale, gamma, x_values)
+        kernel = kernel + torch.eye(self._steps) * noise
+        cholesky_decomp = torch.cholesky(kernel)
 
         for _ in range(num_instances):
             # creating as many standard
@@ -186,6 +193,7 @@ class TwoDImageRegression(DataGenerator):
 
     @staticmethod
     def select_mnist_samples(tensor_list, num_instances, width, height):
+
         max_idx = len(tensor_list)
         idx = torch.randperm(max_idx)[:num_instances]
         func_values = tensor_list[idx]
@@ -198,7 +206,8 @@ class TwoDImageRegression(DataGenerator):
             num_instances_train=None,
             num_instances_vali=None,
             num_instances_test=None,
-            purpose=None):
+            purpose=None,
+            seed=None):
 
         if purpose == 'train':
             num_instances = num_instances_train
@@ -212,6 +221,7 @@ class TwoDImageRegression(DataGenerator):
 
         x_values = self.create_mnist_coordinates(self._width, self._height)
         x_values = x_values.repeat(num_instances, 1, 1)
+
         func_values = self.select_mnist_samples(
             tensor_list, num_instances, self._width, self._height)
 

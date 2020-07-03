@@ -58,14 +58,20 @@ def test_save_results():
     hour = str(current_date.hour).zfill(2)
     minute = str(current_date.minute).zfill(2)
     date_time = f"{year}_{month}_{day}_{hour}_{minute}"
+    try:
+        Helper.save_results(
+            directory, experiment_name, [list_temp, config_temp]
+        )
 
-    Helper.save_results(directory, experiment_name, [list_temp, config_temp])
+        assert (f"temp_{date_time}" in os.listdir('tests/fixtures'))
+        assert 'error.txt' in os.listdir(f'tests/fixtures/temp_{date_time}') \
+               and 'res.json' in os.listdir(f'tests/fixtures/temp_{date_time}')
+    except Exception as e:
+        print(e)
 
-    assert (f"temp_{date_time}" in os.listdir('tests/fixtures'))
-    assert 'error.txt' in os.listdir(f'tests/fixtures/temp_{date_time}') \
-           and 'res.json' in os.listdir(f'tests/fixtures/temp_{date_time}')
+    finally:
 
-    file_names = os.listdir(f'tests/fixtures/temp_{date_time}')
-    [os.remove(f'tests/fixtures/temp_{date_time}/{file}')
-     for file in file_names]
-    os.rmdir(f'tests/fixtures/temp_{date_time}')
+        file_names = os.listdir(f'tests/fixtures/temp_{date_time}')
+        [os.remove(f'tests/fixtures/temp_{date_time}/{file}')
+         for file in file_names]
+        os.rmdir(f'tests/fixtures/temp_{date_time}')

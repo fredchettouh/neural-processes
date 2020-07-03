@@ -9,6 +9,7 @@ from torch.utils import data
 import pandas as pd
 import json
 import collections
+import subprocess
 
 
 class Helper:
@@ -61,9 +62,9 @@ class Helper:
         X_vali, y_vali = vali.drop(labels=['target'], axis=1).to_numpy(
             np.float64), vali['target'].to_numpy(np.float64)
         X_train, y_train = torch.from_numpy(X_train).float(), \
-            torch.from_numpy(y_train).float()
+                           torch.from_numpy(y_train).float()
         X_vali, y_vali = torch.from_numpy(X_vali).float(), \
-            torch.from_numpy(y_vali).float()
+                         torch.from_numpy(y_vali).float()
         return X_train, y_train, X_vali, y_vali
 
     @staticmethod
@@ -170,7 +171,7 @@ class Helper:
         Parameters
         ----------
         model : object: torch neural network object
-        Returns the model with its weights initialized. C
+        Returns the model with its weights initialized.
         """
         if type(model) == nn.Linear:
             nn.init.uniform_(model.weight, -0.05, 0.05)
@@ -199,13 +200,22 @@ class Helper:
         os.environ['PYTHONHASHSEED'] = str(seed)
 
     @staticmethod
-    def save_results(directory, experiment_name, args):
+    def get_colab_sytstem_info():
+        system_info = subprocess.run(['nvidia-smi'], stdout=subprocess.PIPE)
+        formatted_info = system_info.stdout.decode("utf-8")
+        return formatted_info
+
+    @staticmethod
+    def save_results(directory, experiment_name, args,
+                     system_information=None):
         """
         This function takes an arbitrary number arguments creates a new
         directory under a specified name with a time stamp and an
-        experiment name
+        experiment name. It also saves the config file to a specific locatons
         Parameters
         ----------
+        system_information
+        system information because it is not constant
         directory: str: directory to save the files in
         experiment_name: str: name of the experiment to sd
         args: *args: objects to be saved for example model parameters,
@@ -226,8 +236,10 @@ class Helper:
         new_dir_name = os.path.join(
             directory, f"{experiment_name}_{date_time}")
         os.mkdir(new_dir_name)
+        print(f"Creating new directory at {new_dir_name}")
         for arg in args:
             if arg[1]:
+                print(f'Saving {arg[0]}')
                 if type(arg[1]) == collections.OrderedDict:
                     file_name = f"{new_dir_name}/{arg[0]}"
                     torch.save(arg[1], file_name)
@@ -239,7 +251,14 @@ class Helper:
                 elif type(arg[1]) == dict:
                     file_name = f"{new_dir_name}/{arg[0]}.json"
                     with open(file_name, 'w') as file:
-                        json.dump(arg[0], file)
+                        json.dump(arg[1], file)
+        if system_information:
+            print('Saving snapshot of the sytems')
+            file_name = f"{new_dir_name}/system_info.txt"
+            with open(file_name, 'w') as file:
+                for line in system_information:
+                    file.write(line)
+
 
 
 # class HyperParam:

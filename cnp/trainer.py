@@ -50,6 +50,11 @@ class RegressionTrainer:
         if self._train_on_gpu:
             self._cnp.encoder.cuda()
             self._cnp.decoder.cuda()
+
+            if self._cnp.aggregator:
+                self._cnp.aggregator.apply(Helper.init_weights)
+                self._cnp.aggregator.cuda()
+
         data_kwargs = copy(data_kwargs)
         datagenerator = data_kwargs.pop('datagenerator')
 
@@ -121,11 +126,10 @@ class RegressionTrainer:
                     funcvalues = funcvalues[None, :, None]
 
                 contxt_idx, xvalues, funcvalues, target_y, target_x, mu, \
-                    sigma_transformed, distribution = \
+                sigma_transformed, distribution = \
                     self._cnp.prep_and_pass(
                         xvalues, funcvalues, training=False,
                     )
-
                 vali_loss = distribution.log_prob(target_y)
                 vali_loss = -torch.mean(vali_loss)
                 running_vali_loss += vali_loss.item()
@@ -140,19 +144,21 @@ class RegressionTrainer:
                     f'Mean Validation loss after {current_epoch} equals\
                      {round(mean_vali_loss, 3)}\n')
 
-                print(f'Validation loss for the function plotted: \
-                {round(vali_loss.item(), 3)}')
-
-                print(plot_mode)
                 if plot_mode == '1d_regression':
                     Plotter.plot_context_target_1d(
                         contxt_idx, xvalues,
                         funcvalues, target_y, target_x, mu,
                         sigma_transformed)
 
+                    print(f'Validation loss for the function plotted: \
+                                    {round(vali_loss.item(), 3)}')
+
                 elif plot_mode == '2d_greyscale':
                     Plotter.paint_greyscale_images_wrapper(
                         contxt_idx, funcvalues, mu, width=28, height=28)
+                    print(
+                        f'Validation loss for the function plotted: \
+                                    {round(vali_loss.item(), 3)}')
 
             return mean_vali_loss
 
@@ -173,15 +179,14 @@ class RegressionTrainer:
         Parameters
         ----------
 
+        plot_progress: bool: indicates whether or not the training progress
+                       shoudl be plotted
         plot_mode: str:
         print_after: boolean, optional: indicating if progress should be
         batch_size_train: batch size of data
 
         batch_size_vali: batch size of data
         """
-        if self._seed:
-            Helper.set_seed(self._seed)
-
         self._cnp.encoder.train()
         self._cnp.decoder.train()
         if self._cnp.aggregator:
@@ -233,8 +238,9 @@ class RegressionTrainer:
                 if self._train_on_gpu:
                     xvalues, funcvalues = xvalues.cuda(), funcvalues.cuda()
                 optimizer.zero_grad()
+
                 contxt_idx, xvalues, funcvalues, target_y, target_x, mu, \
-                    sigma_transformed, distribution = \
+                sigma_transformed, distribution = \
                     self._cnp.prep_and_pass(
                         xvalues, funcvalues, training=True)
 
@@ -269,31 +275,24 @@ class RegressionTrainer:
         else:
             aggregator_state_dict = None
 
-        return encoder_state_dict, decoder_state_dict, aggregator_state_dict,\
-            mean_epoch_loss, mean_vali_loss
+        return encoder_state_dict, decoder_state_dict, aggregator_state_dict, \
+               mean_epoch_loss, mean_vali_loss
 
     def run_test(
             self, encoder_state_dict, decoder_state_dict,
             aggregator_state_dict, batch_size_test, X_test=None, y_test=None,
             plot_mode=None):
         """This function performs one test run
-                Parameters
-                ----------
-                plotting
-                y_test
-                X_test
-                aggregator_state_dict
-                decoder_state_dict
-                encoder_state_dict
-                plot_mode
-                batch_size_test
-                kwargs
-                testloader: torch.utils.data.DataLoader: iterable object that
-                 holds validation data
-
-                state_dict: dictionary: pytorch dictionary to load weights from
+             Parameters
+             ----------
+             y_test: tensor: targets
+             X_test: tensor: inputs
+             aggregator_state_dict: object: parameters of the aggregation model
+             decoder_state_dict: object: parameters of the decoder model
+             encoder_state_dict: object: parameters of the encoder model
+             plot_mode: str: indicator of the plotting function should be used
+             batch_size_test: int: batch_size of the test set.
         """
-        np.random.seed(self._seed)
         self._cnp.encoder.load_state_dict(encoder_state_dict)
         self._cnp.decoder.load_state_dict(decoder_state_dict)
         self._cnp.encoder.eval()
@@ -302,6 +301,9 @@ class RegressionTrainer:
         if aggregator_state_dict:
             self._cnp.aggregator.load_state_dict(aggregator_state_dict)
             self._cnp.aggregator.eval()
+        if self._seed:
+            print('seed is set')
+            Helper.set_seed(self._seed)
 
         if self._datagenerator:  # generate data on the fly for every epoch
 
@@ -314,17 +316,24 @@ class RegressionTrainer:
                 shuffle=True)
 
         running_mse = 0
+        task_mses = []
         with torch.no_grad():
 
             for xvalues, funcvalues in testloader:
+                if self._train_on_gpu:
+                    xvalues, funcvalues = xvalues.cuda(), funcvalues.cuda()
 
                 contxt_idx, xvalues, funcvalues, target_y, target_x, mu, \
-                    sigma_transformed, distribution = \
+                sigma_transformed, distribution = \
                     self._cnp.prep_and_pass(
                         xvalues, funcvalues, training=False)
 
-                mse = ((mu - target_y) ** 2).mean(1).mean(0)
-                running_mse += mse.item()
+                point_mse = ((mu - target_y) ** 2)
+                task_mse = point_mse.mean(1)[:, 0]
+                batch_mse = task_mse.mean()
+                task_mses.append(mse.item() for mse in task_mse)
+
+                running_mse += batch_mse.item()
                 if plot_mode == '1d_regression':
                     Plotter.plot_context_target_1d(
                         contxt_idx, xvalues,
@@ -336,4 +345,7 @@ class RegressionTrainer:
                         contxt_idx, funcvalues, mu, width=28, height=28)
             else:
                 test_set_mse = running_mse / len(testloader)
-                return test_set_mse
+                flattened_mses = [
+                    inner for outer in task_mses for inner in outer
+                ]
+                return test_set_mse, flattened_mses

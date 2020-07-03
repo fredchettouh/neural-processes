@@ -1,0 +1,51 @@
+{
+  "cnp_params": {
+    "dimout": 2 ,
+    "dimr": 128 ,
+    "dimx": 2 ,
+    "dimy": 1 ,
+    "dropout": 0 ,
+    "max_contx": 80 ,
+    "max_funcs": 100 ,
+    "min_contx": 25 ,
+    "min_funcs": 25 ,
+    "num_layers_decoder": 3 ,
+    "num_layers_encoder": 4 ,
+    "num_neurons_decoder": 128 ,
+    "num_neurons_encoder": 128 ,
+    "aggregation_kwargs": {
+      "aggregator": null,
+      "simple_aggregator_type": "mean"
+    }
+  } ,
+  "mu_gen": 0,
+    "data_kwargs": {
+    "datagenerator": "cnp.datageneration.TwoDImageRegression" ,
+    "init_kwargs": {
+      "height": 28,
+      "link": "~/.pytorch/MNIST_data/",
+      "scale_mean": 0.5 ,
+      "scale_std": 0.5 ,
+      "share_train_data": 0.8 ,
+      "width": 28
+    },
+    "num_instances_train": 32 ,
+    "num_instances_vali": 10 ,
+    "num_instances_test": 100
+  } ,
+  "experiment_params": {"lr": 0.001 ,
+    "n_epochs": 200000,
+    "seed": 1 ,
+    "train_on_gpu": false
+
+  } ,
+  "train_kwargs": {
+    "batch_size_train": 32 ,
+    "batch_size_vali": 5 ,
+    "batch_size_test": 10 ,
+    "plotting": true ,
+    "print_after": 2000,
+    "plot_mode": "2d_greyscale",
+    "plot_progress": true
+  }
+}

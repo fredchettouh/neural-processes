@@ -36,8 +36,9 @@ def test_get_sample_indexes():
     assert (len_unique_trgt == len(trgts_idx))
     assert (len_unique_con == len(contxt_idx))
 
-    assert (len_unique_trgt >= min_trgts and len_unique_trgt <= max_trgts)
-    assert (len_unique_con >= min_trgts and len_unique_con <= max_trgts)
+    assert (min_trgts + min_contx <= len_unique_trgt <= max_trgts + max_contx)
+    assert (min_contx <= len_unique_con <= max_contx)
+
 
 
 def test_select_data():
@@ -85,7 +86,6 @@ def test_RegressionCNP():
             max_funcs=4,
             max_contx=4,
             min_contx=2,
-            fix_num_contxt=False,
             dimx=x_dim,
             dimy=1,
             dimr=r_dim,

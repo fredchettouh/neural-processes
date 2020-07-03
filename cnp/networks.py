@@ -43,7 +43,7 @@ def simple_aggregation(encoding, aggregation_operation):
         aggregated_encoding = encoding.mean(1)
         # Todo: Aggregation type max does not work
     elif aggregation_operation == 'max':
-        aggregated_encoding = encoding.max(1)
+        aggregated_encoding = encoding.max(1)[0]
     elif aggregation_operation == 'sum':
         aggregated_encoding = encoding.sum(1)
 
@@ -57,11 +57,9 @@ class BasicMLP(nn.Module):
     def __init__(self, insize, num_layers, num_neurons, dimout, dropout=0,
                  activation='nn.ReLU()', batch_norm=False):
         super().__init__()
-        # todo add dropout to first layer and add batch normalization
 
         self._insize = insize
-        # self._num_layers = num_layers
-        # self._num_neurons = num_neurons
+
         self._dimout = dimout
         self._dropout = dropout
 
@@ -181,7 +179,7 @@ class Decoder(BasicMLP):
 
 class BasicMLPAggregator(BasicMLP):
     """
-    Goal of the this class is to learn the weights of an weighted average
+    Goal of the this class is to learn the weights of as weighted average
     The input is the embedding from the encoder. For batch_size one,
      i.e. one function and x context points we need to learn x weights.
      That means that the input is num_context_points X dim_embedding
