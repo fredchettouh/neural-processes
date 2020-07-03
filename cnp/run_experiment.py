@@ -7,8 +7,8 @@ import torch
 def run_experiment(config_file,
                    experiment_name,
                    google_colab,
-                   results_dir='experiments/results',
-                  ):
+                   results_dir='experiments/results'
+                   ):
     # checking whether CUDA is available
     train_on_gpu = torch.cuda.is_available()
     if (train_on_gpu):

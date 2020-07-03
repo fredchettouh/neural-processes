@@ -40,7 +40,6 @@ def test_get_sample_indexes():
     assert (min_contx <= len_unique_con <= max_contx)
 
 
-
 def test_select_data():
     # contxt_idx, func_idx, xvalues, funcvalues, batch_size
     for i in range(10):

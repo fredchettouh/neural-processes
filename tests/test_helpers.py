@@ -62,7 +62,6 @@ def test_save_results():
         Helper.save_results(
             directory, experiment_name, [list_temp, config_temp]
         )
-
         assert (f"temp_{date_time}" in os.listdir('tests/fixtures'))
         assert 'error.txt' in os.listdir(f'tests/fixtures/temp_{date_time}') \
                and 'res.json' in os.listdir(f'tests/fixtures/temp_{date_time}')

@@ -3,7 +3,6 @@ import torch
 from torch import optim
 from tqdm import tqdm
 from importlib import import_module
-import numpy as np
 from copy import copy
 
 from .helpers import Helper
@@ -126,7 +125,7 @@ class RegressionTrainer:
                     funcvalues = funcvalues[None, :, None]
 
                 contxt_idx, xvalues, funcvalues, target_y, target_x, mu, \
-                sigma_transformed, distribution = \
+                    sigma_transformed, distribution = \
                     self._cnp.prep_and_pass(
                         xvalues, funcvalues, training=False,
                     )
@@ -240,7 +239,7 @@ class RegressionTrainer:
                 optimizer.zero_grad()
 
                 contxt_idx, xvalues, funcvalues, target_y, target_x, mu, \
-                sigma_transformed, distribution = \
+                    sigma_transformed, distribution = \
                     self._cnp.prep_and_pass(
                         xvalues, funcvalues, training=True)
 
@@ -275,8 +274,8 @@ class RegressionTrainer:
         else:
             aggregator_state_dict = None
 
-        return encoder_state_dict, decoder_state_dict, aggregator_state_dict, \
-               mean_epoch_loss, mean_vali_loss
+        return encoder_state_dict, decoder_state_dict, aggregator_state_dict,\
+            mean_epoch_loss, mean_vali_loss
 
     def run_test(
             self, encoder_state_dict, decoder_state_dict,
@@ -324,7 +323,7 @@ class RegressionTrainer:
                     xvalues, funcvalues = xvalues.cuda(), funcvalues.cuda()
 
                 contxt_idx, xvalues, funcvalues, target_y, target_x, mu, \
-                sigma_transformed, distribution = \
+                    sigma_transformed, distribution = \
                     self._cnp.prep_and_pass(
                         xvalues, funcvalues, training=False)
 

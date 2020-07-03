@@ -62,9 +62,9 @@ class Helper:
         X_vali, y_vali = vali.drop(labels=['target'], axis=1).to_numpy(
             np.float64), vali['target'].to_numpy(np.float64)
         X_train, y_train = torch.from_numpy(X_train).float(), \
-                           torch.from_numpy(y_train).float()
+            torch.from_numpy(y_train).float()
         X_vali, y_vali = torch.from_numpy(X_vali).float(), \
-                         torch.from_numpy(y_vali).float()
+            torch.from_numpy(y_vali).float()
         return X_train, y_train, X_vali, y_vali
 
     @staticmethod
@@ -258,8 +258,6 @@ class Helper:
             with open(file_name, 'w') as file:
                 for line in system_information:
                     file.write(line)
-
-
 
 # class HyperParam:
 #
