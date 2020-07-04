@@ -1,6 +1,7 @@
 # pytorch imports
 import torch
 from torch import optim
+from torch import nn
 from tqdm import tqdm
 from importlib import import_module
 from copy import copy
@@ -50,7 +51,7 @@ class RegressionTrainer:
             self._cnp.encoder.cuda()
             self._cnp.decoder.cuda()
 
-            if self._cnp.aggregator:
+            if isinstance(self._cnp.aggregator, nn.Module):
                 self._cnp.aggregator.apply(Helper.init_weights)
                 self._cnp.aggregator.cuda()
 
@@ -108,7 +109,7 @@ class RegressionTrainer:
 
         self._cnp.encoder.eval()
         self._cnp.decoder.eval()
-        if self._cnp.aggregator:
+        if isinstance(self._cnp.aggregator, nn.Module):
             self._cnp.aggregator.eval()
 
         running_vali_loss = 0
@@ -188,11 +189,11 @@ class RegressionTrainer:
         """
         self._cnp.encoder.train()
         self._cnp.decoder.train()
-        if self._cnp.aggregator:
-            self._cnp.aggregator.eval()
+        if isinstance(self._cnp.aggregator, nn.Module):
+            self._cnp.aggregator.train()
 
         # Todo optimizier should be passed as an argument to the trainer
-        if self._cnp.aggregator:
+        if isinstance(self._cnp.aggregator, nn.Module):
 
             optimizer = optim.Adam(
                 list(self._cnp.encoder.parameters()) +
@@ -262,14 +263,14 @@ class RegressionTrainer:
                                 epoch, plot_mode, valiloader))
                         self._cnp.encoder.train()
                         self._cnp.decoder.train()
-                        if self._cnp.aggregator:
+                        if isinstance(self._cnp.aggregator, nn.Module):
                             self._cnp.aggregator.train()
         if plot_progress:
             Plotter.plot_training_progress(
                 mean_epoch_loss, mean_vali_loss, interval=print_after)
         encoder_state_dict = self._cnp.encoder.state_dict()
         decoder_state_dict = self._cnp.decoder.state_dict()
-        if self._cnp.aggregator:
+        if isinstance(self._cnp.aggregator, nn.Module):
             aggregator_state_dict = self._cnp.aggregator.state_dict()
         else:
             aggregator_state_dict = None

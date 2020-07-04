@@ -96,7 +96,6 @@ def test_RegressionCNP():
             aggregation_kwargs={
                 "aggregator": "GatedMLPAggregator",
                 "insize": r_dim,
-                "num_layers": 2,
                 "num_neurons": 64,
                 "dimout": 1
             },

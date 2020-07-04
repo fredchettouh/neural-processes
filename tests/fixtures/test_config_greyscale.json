@@ -16,7 +16,6 @@
      "aggregation_kwargs": {
       "aggregator": "GatedMLPAggregator",
       "insize": 128,
-      "num_layers": 2,
       "num_neurons": 64,
       "dimout": 1
     }

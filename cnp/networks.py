@@ -1,8 +1,8 @@
 import torch
 from torch import nn
+from importlib import import_module
 
 
-# Todo allow for different activation function
 def create_linear_layer(
         layer_specs, index, dropout, activation, batch_norm=False):
     """
@@ -32,24 +32,8 @@ def create_linear_layer(
 
     if dropout:
         layer_object.append(dropout_layer)
-        # return [lin_layer, activation_function, dropout_layer]
-    # else:
-    #     return [lin_layer, activation_function]
+
     return layer_object
-
-
-def simple_aggregation(encoding, aggregation_operation):
-    if aggregation_operation == 'mean':
-        aggregated_encoding = encoding.mean(1)
-        # Todo: Aggregation type max does not work
-    elif aggregation_operation == 'max':
-        aggregated_encoding = encoding.max(1)[0]
-    elif aggregation_operation == 'sum':
-        aggregated_encoding = encoding.sum(1)
-
-    aggregated_encoding = aggregated_encoding.unsqueeze(1)
-
-    return aggregated_encoding
 
 
 class BasicMLP(nn.Module):
@@ -161,7 +145,7 @@ class Decoder(BasicMLP):
 
      num_layers: int: Dimension of hidden layers
 
-    num_neurons: int: Number of Neurons for each hidden layer
+     num_neurons: int: Number of Neurons for each hidden layer
     """
 
     def __init__(self, insize, num_layers, num_neurons, dimout, dropout=0,
@@ -219,12 +203,12 @@ class BasicMLPAggregator(BasicMLP):
     def aggregate(self, embedding, weights_for_average, batch_size,
                   normalize):
         weights_for_average = torch.transpose(weights_for_average, 1, 0)
+
         weights_for_average_batch = weights_for_average.view(
             batch_size, 1, -1)
 
         if normalize:
             normalized_weights = self.softmax(weights_for_average_batch)
-
         aggregation = torch.bmm(normalized_weights, embedding)
 
         return aggregation
@@ -254,33 +238,44 @@ class BasicMLPAggregator(BasicMLP):
 
 
 class GatedMLPAggregator(nn.Module):
-    def __init__(self, insize, dimout, num_layers=2,
+    def __init__(self,
+                 insize,
+                 dimout,
+                 # num_layers=2,
                  num_neurons=128,
-                 dropout=0,
-                 activation='nn.ReLU()',
-                 batch_norm=False
+                 # dropout=0,
+                 # activation='nn.ReLU()',
+                 # batch_norm=False
                  ):
         super().__init__()
 
-        self.attention = BasicMLP(
-            insize=insize,
-            dimout=num_neurons,
-            num_layers=num_layers,
-            num_neurons=num_neurons,
-            dropout=dropout,
-            activation=activation,
-            batch_norm=batch_norm
-        )
+        # self.attention = BasicMLP(
+        #     insize=insize,
+        #     dimout=num_neurons,
+        #     num_layers=num_layers,
+        #     num_neurons=num_neurons,
+        #     dropout=dropout,
+        #     activation=activation,
+        #     batch_norm=batch_norm
+        # )
 
-        self.gate = BasicMLP(
-            insize=insize,
-            dimout=num_neurons,
-            num_layers=num_layers,
-            num_neurons=num_neurons,
-            dropout=dropout,
-            activation=activation,
-            batch_norm=batch_norm
-        )
+        # self.gate = BasicMLP(
+        #     insize=insize,
+        #     dimout=num_neurons,
+        #     num_layers=num_layers,
+        #     num_neurons=num_neurons,
+        #     dropout=dropout,
+        #     activation=activation,
+        #     batch_norm=batch_norm
+        # )
+
+        # The naming convention follows the original paper
+        # Dauphin: https://arxiv.org/abs/1612.08083
+        # and the at:
+        # https://github.com/AMLab-Amsterdam/AttentionDeepMIL/blob/master/model.py
+
+        self.attention_W = nn.Linear(insize, num_neurons)
+        self.attenion_V = nn.Linear(insize, num_neurons)
 
         self.sigmoid = nn.Sigmoid()
         self.tanh = nn.Tanh()
@@ -305,14 +300,50 @@ class GatedMLPAggregator(nn.Module):
         stacked_embedding = embedding.reshape(
             batch_size * n_features, -1)
         # these two networks are both of size dim_embeddings X dim_hidden
-        attention_weights = self.sigmoid(
-            self.attention.process_input(stacked_embedding))
-        gated_weights = self.tanh(self.gate.process_input(stacked_embedding))
+        # attention_weights = self.attention.process_input(stacked_embedding)
+
+        attention_weights_V = self.attenion_V(stacked_embedding)
+        attention_weights_V = self.sigmoid(attention_weights_V)
+
+        attention_weights_W = self.attention_W(stacked_embedding)
+        attention_weights_W = self.tanh(attention_weights_W)
 
         # elementwise combination of the two weight vectors
-        weights_for_average = self.fc(attention_weights * gated_weights)
+        weights_for_average = self.fc(
+            attention_weights_V * attention_weights_W)
 
         aggregation = self.aggregate(embedding, weights_for_average,
                                      batch_size, normalize)
 
         return aggregation
+
+
+class TargetBasedAggregation:
+    def __init__(self, distance_metric):
+        method_name = distance_metric
+        package_name = 'cnp.distance_metrics'
+        package = import_module(package_name)
+        self._distance_metric = getattr(package, method_name)
+
+    def apply_target_based_attention(self, context_x, target_x, encoding):
+        attention_weights = self._distance_metric(context_x, target_x)
+        target_based_encoding = torch.bmm(attention_weights, encoding)
+        return target_based_encoding
+
+
+class SimpleAggregator:
+
+    def __init__(self, aggregation_operation):
+        self.aggregation_type = aggregation_operation
+
+    def simple_aggregation(self, encoding):
+        if self.aggregation_type == 'mean':
+            aggregated_encoding = encoding.mean(1)
+        elif self.aggregation_type == 'max':
+            aggregated_encoding = encoding.max(1)[0]
+        elif self.aggregation_type == 'sum':
+            aggregated_encoding = encoding.sum(1)
+
+        aggregated_encoding = aggregated_encoding.unsqueeze(1)
+
+        return aggregated_encoding

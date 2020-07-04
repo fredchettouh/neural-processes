@@ -1,4 +1,5 @@
-from .networks import Encoder, Decoder, simple_aggregation
+from torch import nn
+from .networks import Encoder, Decoder, TargetBasedAggregation
 from .helpers import Helper
 import numpy as np
 from torch.distributions.normal import Normal
@@ -74,11 +75,9 @@ def get_sample_indexes(
         contxt_idx = trgts_idx[:num_contxt]
 
     return trgts_idx, contxt_idx
-    # else:
-    #     return np.arange(0, dim_observation), contxt_idx
 
 
-def format_encoding(encoding, batch_size, num_trgt):
+def format_encoding(encoding, batch_size, num_trgt, repeat=True):
     """
     Utility function that extend takes the aggregated prior knowledge of one
     dimension and repeats it to achieve the original shape of the context input
@@ -86,6 +85,9 @@ def format_encoding(encoding, batch_size, num_trgt):
 
     Parameters
     ----------
+    repeat: bool: indicates if the context has to be repeated to all target
+                  points. This is not the case if attention based attention
+                  is used
     num_trgt: int: number of target points needed to associate the duplicate
               the aggregated context (prior knowlegdge)
     batch_size: int: number of tasks in batch
@@ -93,8 +95,9 @@ def format_encoding(encoding, batch_size, num_trgt):
     """
 
     # because we need to pair it with every target
-    encoding_exp = encoding.repeat(1, num_trgt, 1)
-    encoding_stacked = encoding_exp.view(batch_size * num_trgt, -1)
+    if repeat:
+        encoding = encoding.repeat(1, num_trgt, 1)
+    encoding_stacked = encoding.view(batch_size * num_trgt, -1)
 
     return encoding_stacked
 
@@ -166,23 +169,19 @@ class RegressionCNP:
 
         aggregation_kwargs = copy(aggregation_kwargs)
         method_name = aggregation_kwargs.pop('aggregator')
-        if method_name:
-            package_name = 'cnp.networks'
-            package = import_module(package_name)
-            method = getattr(package, method_name)
+        package_name = 'cnp.networks'
+        package = import_module(package_name)
+        method = getattr(package, method_name)
 
-            self._aggregator = method(**aggregation_kwargs)
-            aggregation_kwargs['aggregator'] = method_name
-        else:
-            self._aggregator = None
-            self.simple_aggregator_type = aggregation_kwargs[
-                "simple_aggregator_type"
-            ]
-        if self._aggregator:
-            print(self._aggregator)
-        else:
-            print(
-                f"Aggregation using {self.simple_aggregator_type} operation")
+        self._aggregator = method(**aggregation_kwargs)
+        aggregation_kwargs['aggregator'] = method_name
+        # else:
+        #     self._aggregator = None
+        #     self.simple_aggregator_type = aggregation_kwargs[
+        #         "simple_aggregator_type"
+        #     ]
+
+        print(self._aggregator)
 
         self._sample_specs_kwargs = {
             "min_trgts": min_funcs,
@@ -252,15 +251,26 @@ class RegressionCNP:
         # from type of aggregator (i.e. mean, NN, RNN)
         encoding_batch_view = encoding.view(batch_size, num_contxt, -1)
 
-        if self._aggregator:
-            aggregated_enconding = self._aggregator(
-                encoding_batch_view)
-        else:
-            aggregated_enconding = simple_aggregation(
-                encoding_batch_view, self.simple_aggregator_type)
+        if isinstance(self._aggregator, TargetBasedAggregation):
+            context_x = context_x_stacked.view(batch_size, num_contxt, -1)
+            target_x = target_x_stacked.view(batch_size, num_trgt, -1)
 
-        encoding_stacked = format_encoding(
-            aggregated_enconding, batch_size, num_trgt)
+            attention_weighted_encdoding = \
+                self._aggregator.apply_target_based_attention(
+                    context_x, target_x, encoding_batch_view)
+
+            encoding_stacked = format_encoding(
+                attention_weighted_encdoding, batch_size, num_trgt,
+                repeat=False)
+
+        else:
+            if isinstance(self._aggregator, nn.Module):
+                aggregated_enconding = self._aggregator(encoding_batch_view)
+            else:
+                aggregated_enconding = \
+                    self._aggregator.simple_aggregation(encoding_batch_view)
+            encoding_stacked = format_encoding(
+                aggregated_enconding, batch_size, num_trgt, repeat=True)
 
         decoding = self._decoder(target_x_stacked, encoding_stacked)
         decoding_rshp = decoding.view(batch_size, num_trgt, -1)
