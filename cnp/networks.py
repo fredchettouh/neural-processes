@@ -325,6 +325,8 @@ class TargetBasedAggregation:
         package = import_module(package_name)
         self._distance_metric = getattr(package, method_name)
 
+        self.softmax = nn.Softmax(dim=1)
+
     def apply_target_based_attention(self, context_x, target_x, encoding,
                                      normalize=True):
         attention_weights = self._distance_metric(context_x, target_x)
@@ -339,8 +341,6 @@ class SimpleAggregator:
 
     def __init__(self, aggregation_operation):
         self.aggregation_type = aggregation_operation
-
-        self.softmax = nn.Softmax(dim=1)
 
     def simple_aggregation(self, encoding):
         if self.aggregation_type == 'mean':
