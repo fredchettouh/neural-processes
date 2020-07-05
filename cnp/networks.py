@@ -325,8 +325,12 @@ class TargetBasedAggregation:
         package = import_module(package_name)
         self._distance_metric = getattr(package, method_name)
 
-    def apply_target_based_attention(self, context_x, target_x, encoding):
+    def apply_target_based_attention(self, context_x, target_x, encoding,
+                                     normalize=True):
         attention_weights = self._distance_metric(context_x, target_x)
+        if normalize:
+            attention_weights = self.softmax(attention_weights)
+
         target_based_encoding = torch.bmm(attention_weights, encoding)
         return target_based_encoding
 
@@ -335,6 +339,8 @@ class SimpleAggregator:
 
     def __init__(self, aggregation_operation):
         self.aggregation_type = aggregation_operation
+
+        self.softmax = nn.Softmax(dim=1)
 
     def simple_aggregation(self, encoding):
         if self.aggregation_type == 'mean':
