@@ -4,7 +4,7 @@
     "dimr": 128 ,
     "dimx": 1 ,
     "dimy": 1 ,
-    "dropout": 0.2 ,
+    "dropout": 0 ,
     "max_contx": 10 ,
     "max_funcs": 10 ,
     "min_contx": 3 ,
@@ -14,8 +14,8 @@
     "num_neurons_decoder": 128 ,
     "num_neurons_encoder": 128 ,
      "aggregation_kwargs": {
-      "aggregator": null,
-      "simple_aggregator_type": "mean"
+      "aggregator": "SimpleAggregator",
+      "aggregation_operation": "mean"
     }
   },
   "data_kwargs": {
