@@ -39,7 +39,7 @@ def test_plot_context_target_1d():
     funcvalues = xvalues**2
     target_y = funcvalues
     mu = xvalues
-    cov_matrix = torch.normal(0,0.001, (1, 400, 1))
+    cov_matrix = torch.normal(0, 0.001, (1, 400, 1))
     Plotter.plot_context_target_1d(
         contxt_idx=contxt_idx,
         xvalues=xvalues,
