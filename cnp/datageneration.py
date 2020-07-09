@@ -61,19 +61,26 @@ class GaussianProcess(DataGenerator):
         self._steps = steps
 
     def _rbf_kernel(self, length_scale, gamma, x):
+        y_dim = 1
+        batch_size = 1
+        length_scale = (
+                torch.ones(batch_size, y_dim, self._xdim) * length_scale
+        )
+        gamma = torch.ones((batch_size, y_dim)) * gamma
+
+        x = x[None, :, :]
         y = x
-        # getting x1^2+x2^2....xp^2 for each observation
-        xrow = torch.sum(x * x, 1)
-        yrow = torch.sum(y * y, 1)
-        # reshaping x and y sums so that we can add each y^2 row sum
-        # to each element of the vector xrow
-        # thus creating a matrix of pairwise sums x^2+y^2
-        x_res = xrow.reshape(x.shape[0], 1)
-        y_res = yrow.reshape(1, x.shape[0])
-        # this creats the xy product
-        xy = torch.mm(x, y.t())
-        # adding everything together of the form x^2+y^2-2xy scaling it
-        kernel = torch.exp(-gamma * ((x_res + y_res - 2 * xy) / length_scale))
+        x = x[:, None, :, :]
+        y = y[:, :, None, :]
+        distance = x-y
+        scaled_distance = \
+            distance[:, None, :, :, :] / length_scale[:, :, None, None, :]
+        squared_distance = scaled_distance**2
+        squared_distance = squared_distance.sum(-1)
+        kernel = \
+            (gamma**2)[:, :, None, None] * torch.exp(-0.5 * squared_distance)
+
+        kernel = kernel[0, 0, :, :]
         return kernel
 
     def generate_curves(self, noise=1e-4, length_scale=0.4, gamma=1,
@@ -138,11 +145,13 @@ class PolynomialRegression(DataGenerator):
             num_instances = num_instances_vali
         elif purpose == 'test':
             num_instances = num_instances_test
-        x_values = torch.normal(
-            mean=mu_gen,
-            std=sigma_gen,
-            size=(num_instances, self._steps, self._xdim),
-            dtype=torch.float64)
+        x_values = Helper.scale_shift_uniform(
+            -2, 2, *(num_instances, self._steps, self._xdim))
+        # x_values = torch.normal(
+        #     mean=mu_gen,
+        #     std=sigma_gen,
+        #     size=(num_instances, self._steps, self._xdim),
+        #     dtype=torch.float64)
         x_values_copy = copy(x_values)
 
         for i in range(0, self._xdim):

@@ -7,8 +7,7 @@ import torch
 def run_experiment(config_file,
                    experiment_name,
                    google_colab,
-                   results_dir='experiments/results'
-                   ):
+                   results_dir='experiments/results'):
     # checking whether CUDA is available
     train_on_gpu = torch.cuda.is_available()
     if (train_on_gpu):
@@ -27,11 +26,18 @@ def run_experiment(config_file,
 
     state_dict_encoder, state_dict_decoder, state_dict_aggregator, \
         train_loss, vali_loss = trainer.run_training(
-            plot_mode=config_file['train_kwargs']['plot_mode'],
-            plot_progress=config_file['train_kwargs']['plot_progress'],
-            batch_size_train=config_file['train_kwargs']['batch_size_train'],
-            batch_size_vali=config_file['train_kwargs']['batch_size_vali'],
-            print_after=config_file['train_kwargs']['print_after'])
+            plot_mode=config_file['train_kwargs'].get(
+                'plot_mode', None),
+            plot_progress=config_file['train_kwargs'].get(
+                'plot_progress', False),
+            batch_size_train=config_file['train_kwargs'].get(
+                'batch_size_train', None),
+            batch_size_vali=config_file['train_kwargs'].get(
+                'batch_size_vali', None),
+            print_after=config_file['train_kwargs'].get(
+                'print_after', None),
+            early_stopping=config_file['train_kwargs'].get(
+                'early_stopping', False))
 
     total_mse, task_mses = trainer.run_test(
         encoder_state_dict=state_dict_encoder,

@@ -4,6 +4,66 @@ import json
 import torch
 
 
+def test_early_stopping():
+    with open('tests/fixtures/test_config_1d.json') as file:
+        config = json.load(file)
+
+    regressor = RegressionCNP(**config['cnp_params'])
+    trainer = RegressionTrainer(
+        config['data_kwargs'],
+        cnp=regressor,
+        lr=0.001,
+        n_epochs=10,
+        train_on_gpu=False,
+        seed=None
+    )
+    vali_losses_1 = [0.5, 0.1, 0.09, 0.08, 0.09, 0.11]
+    vali_losses_2 = [0.5, 0.1, 0.09, 0.08, 0.06, 0.11]
+    vali_losses_3 = [0.5, 0.1, 0.09, 0.08, 0.09, 0.07]
+
+    stop_training_1 = trainer.check_early_stopping(vali_losses_1, limit=2)
+    stop_training_2 = trainer.check_early_stopping(vali_losses_2, limit=2)
+    stop_training_3 = trainer.check_early_stopping(vali_losses_3, limit=2)
+
+    assert stop_training_1
+    assert not stop_training_2
+    assert not stop_training_3
+
+
+def test_check_early_stopping_rolling_mean():
+    with open('tests/fixtures/test_config_1d.json') as file:
+        config = json.load(file)
+
+    regressor = RegressionCNP(**config['cnp_params'])
+    trainer = RegressionTrainer(
+        config['data_kwargs'],
+        cnp=regressor,
+        lr=0.001,
+        n_epochs=10,
+        train_on_gpu=False,
+        seed=None
+    )
+    vali_losses_1 = [0.5, 0.1, 0.09, 0.02, 0.3, 0.04, 0.09,
+                     0.05, 0.1, 0.2, 0.1, 0.2]
+    vali_losses_2 = [0.5, 0.1, 0.09, 0.08, 0.06, 0.11]
+    vali_losses_3 = [0.5, 0.1, 0.09, 0.08, 0.09, 0.07]
+    vali_losses_4 = [0.5, 0.1, 0.09]
+
+    stop_training_1 = trainer.check_early_stopping_rolling_mean(
+        vali_losses_1)
+    stop_training_2 = trainer.check_early_stopping_rolling_mean(
+        vali_losses_2)
+    stop_training_3 = trainer.check_early_stopping_rolling_mean(
+        vali_losses_3)
+    stop_training_4 = trainer.check_early_stopping_rolling_mean(
+        vali_losses_4)
+
+    assert not stop_training_1
+    assert not stop_training_2
+    assert not stop_training_3
+    assert not stop_training_4
+
+
 def test_run_training_simple_regression():
     with open('tests/fixtures/test_config_1d.json') as file:
         config = json.load(file)

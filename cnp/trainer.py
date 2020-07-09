@@ -9,9 +9,9 @@ from copy import copy
 from .helpers import Helper
 from .plotting import Plotter
 
-
 # TODO: optimizer has to become variable
 # else I cannot pass different aggregators to it
+
 
 class RegressionTrainer:
     """
@@ -87,6 +87,62 @@ class RegressionTrainer:
                     train_share=data_kwargs['train_share'],
                     seed=data_kwargs['seed']
                 )
+
+    def check_early_stopping(
+            self, mean_vali_losses, step=1, steps_performed=0, limit=4):
+        """
+        Checks recursively if the early stopping criteria has been met
+
+        Parameters
+        ----------
+        mean_vali_losses: list: list of mean validattion losses
+        step: int: current index
+        steps_performed: int: number of times that the current mean vali loss
+                         was larger than the previous one
+        limit: int: how many sequential increases in the mean vali loss are
+               tolerated
+
+        Returns
+        -------
+
+        """
+        stop_training = False
+        step += 1
+        try:
+            if mean_vali_losses[step - 1] < mean_vali_losses[step]:
+                steps_performed += 1
+            else:
+                steps_performed = 0
+            if steps_performed >= limit:
+                print('Early stopping criterion meet for loss')
+                stop_training = True
+                return stop_training
+            else:
+                stop_training = self.check_early_stopping(
+                    mean_vali_losses, step, steps_performed, limit)
+        except IndexError:
+            print(
+                "Early stopping criterion not met")
+        return stop_training
+
+    def check_early_stopping_rolling_mean(
+            self, mean_vali_losses, look_back=5):
+        stop_training = False
+        start = look_back - 1
+        if len(mean_vali_losses) > start:
+            rolling_means = [
+                sum(mean_vali_losses[i - start:i + 1]) / look_back
+                for i in range(start, len(mean_vali_losses))]
+
+            for index, val in enumerate(rolling_means):
+                if index > 3:
+                    if rolling_means[index - 4] <\
+                            rolling_means[index - 3] <\
+                            rolling_means[index - 2] <\
+                            rolling_means[index - 1] <\
+                            rolling_means[index]:
+                        stop_training = True
+        return stop_training
 
     def _validation_run(self, current_epoch, plot_mode=None, valiloader=None):
         """
@@ -168,7 +224,8 @@ class RegressionTrainer:
             batch_size_train=None,
             plot_mode=None,
             batch_size_vali=None,
-            plot_progress=True):
+            plot_progress=True,
+            early_stopping=None):
 
         """
         This function performs the training of the conditional neural process
@@ -186,6 +243,8 @@ class RegressionTrainer:
         batch_size_train: batch size of data
 
         batch_size_vali: batch size of data
+        early_stopping: bool: Indicates if early_stopping_regularization
+                        should be done
         """
         self._cnp.encoder.train()
         self._cnp.decoder.train()
@@ -208,7 +267,7 @@ class RegressionTrainer:
 
         mean_epoch_loss = []
         mean_vali_loss = []
-
+        stop_training = False
         for epoch in tqdm(range(self._n_epochs), total=self._n_epochs):
 
             if self._datagenerator:  # generate data on the fly for every epoch
@@ -261,10 +320,20 @@ class RegressionTrainer:
                         mean_vali_loss.append(
                             self._validation_run(
                                 epoch, plot_mode, valiloader))
+                        if early_stopping:
+                            stop_training = \
+                                self.check_early_stopping(
+                                    mean_vali_losses=mean_vali_loss)
                         self._cnp.encoder.train()
                         self._cnp.decoder.train()
                         if isinstance(self._cnp.aggregator, nn.Module):
                             self._cnp.aggregator.train()
+            # if early stopping criteria was reached, break out of the
+            # outer epochs training loop
+
+            if stop_training:
+                break
+
         if plot_progress:
             Plotter.plot_training_progress(
                 mean_epoch_loss, mean_vali_loss, interval=print_after)

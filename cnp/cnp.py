@@ -146,7 +146,10 @@ class RegressionCNP:
             num_layers_decoder,
             num_neurons_decoder,
             aggregation_kwargs,
-            dropout=0):
+            dropout=0,
+            activation='nn.ReLU()',
+            batch_norm=False
+    ):
         super().__init__()
 
         self._encoder = Encoder(
@@ -154,7 +157,9 @@ class RegressionCNP:
             num_layers=num_layers_encoder,
             num_neurons=num_neurons_encoder,
             dimout=dimr,
-            dropout=dropout
+            dropout=dropout,
+            activation=activation,
+            batch_norm=batch_norm
         )
 
         self._decoder = Decoder(
@@ -162,7 +167,9 @@ class RegressionCNP:
             num_layers=num_layers_decoder,
             num_neurons=num_neurons_decoder,
             dimout=dimout,
-            dropout=dropout)
+            dropout=dropout,
+            activation=activation,
+            batch_norm=batch_norm)
 
         print(self._decoder)
         print(self._encoder)

@@ -165,13 +165,13 @@ class BasicMLPAggregator(BasicMLP):
     """
     Goal of the this class is to learn the weights of as weighted average
     The input is the embedding from the encoder. For batch_size one,
-     i.e. one function and x context points we need to learn x weights.
-     That means that the input is num_context_points X dim_embedding
-     In the simplest case this is multiplied by a dim_embedding X 1 weight
-     vector to produce a num_context_points X 1 vector which is the weight
-     vector
-     That means that the learned weight vector has the dimensions
-     x times 1. We transpose this an multiply it with the embedding tensor
+    i.e. one function and x context points we need to learn x weights.
+    That means that the input is num_context_points X dim_embedding
+    In the simplest case this is multiplied by a dim_embedding X 1 weight
+    vector to produce a num_context_points X 1 vector which is the weight
+    vector
+    That means that the learned weight vector has the dimensions
+    x times 1. We transpose this an multiply it with the embedding tensor
     thus (batch_size, 1, x) *(batchsize_x, dim_embedding) =
     (batch_size, 1, dim_embedding)
 
@@ -187,13 +187,14 @@ class BasicMLPAggregator(BasicMLP):
         Parameters
         ----------
 
-        insize : int
-        The dimensions of the embedding
-        num_layers : int
-        num_neurons : int
-        dimout : int
-        dropout : int
-
+        insize : int: The dimensions of the embedding
+        num_layers : int: number of layers includes
+        num_neurons : int: number of nodes per layer
+        dimout : int: output size should be 1
+        dropout : float: share of nodes to deactivcate per episode
+        activation: str: activation function to be used in layers
+        batch_norm: bool: indication of wheter or not to use
+                    batchnormalization
         """
         super().__init__(insize, num_layers, num_neurons, dimout, dropout,
                          activation, batch_norm)
@@ -241,33 +242,9 @@ class GatedMLPAggregator(nn.Module):
     def __init__(self,
                  insize,
                  dimout,
-                 # num_layers=2,
                  num_neurons=128,
-                 # dropout=0,
-                 # activation='nn.ReLU()',
-                 # batch_norm=False
                  ):
         super().__init__()
-
-        # self.attention = BasicMLP(
-        #     insize=insize,
-        #     dimout=num_neurons,
-        #     num_layers=num_layers,
-        #     num_neurons=num_neurons,
-        #     dropout=dropout,
-        #     activation=activation,
-        #     batch_norm=batch_norm
-        # )
-
-        # self.gate = BasicMLP(
-        #     insize=insize,
-        #     dimout=num_neurons,
-        #     num_layers=num_layers,
-        #     num_neurons=num_neurons,
-        #     dropout=dropout,
-        #     activation=activation,
-        #     batch_norm=batch_norm
-        # )
 
         # The naming convention follows the original paper
         # Dauphin: https://arxiv.org/abs/1612.08083
@@ -325,7 +302,7 @@ class TargetBasedAggregation:
         package = import_module(package_name)
         self._distance_metric = getattr(package, method_name)
 
-        self.softmax = nn.Softmax(dim=1)
+        self.softmax = nn.Softmax(dim=-1)
 
     def apply_target_based_attention(self, context_x, target_x, encoding,
                                      normalize=True):

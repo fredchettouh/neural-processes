@@ -5,17 +5,18 @@
     "dimx": 1 ,
     "dimy": 1 ,
     "dropout": 0.2 ,
-    "max_contx": 10 ,
-    "max_funcs": 10 ,
-    "min_contx": 3 ,
-    "min_funcs": 2 ,
+    "batch_norm": true,
+    "max_contx": 130 ,
+    "max_funcs": 130 ,
+    "min_contx": 40 ,
+    "min_funcs": 80 ,
     "num_layers_decoder": 3 ,
     "num_layers_encoder": 4 ,
     "num_neurons_decoder": 128 ,
     "num_neurons_encoder": 128 ,
      "aggregation_kwargs": {
-      "aggregator": null,
-      "simple_aggregator_type": "mean"
+      "aggregator": "SimpleAggregator",
+      "aggregation_operation": "mean"
     }
   },
   "data_kwargs": {
@@ -36,7 +37,7 @@
     "max_coef": 1
   } ,
   "experiment_params": {
-    "lr": 0.001 ,
+    "lr": 0.0001 ,
     "n_epochs": 200000,
     "seed": 1 ,
     "train_on_gpu": false

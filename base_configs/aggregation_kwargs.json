@@ -4,14 +4,19 @@
       "aggregator": "BasicMLPAggregator",
       "insize": 128,
       "num_layers": 2,
-      "num_neurons": 64,
+      "num_neurons": 128,
       "dimout": 1
   },
   "GatedMLPAggregator" :
   {
     "aggregator": "GatedMLPAggregator",
     "insize": 128,
-    "num_neurons": 64,
+    "num_neurons": 128,
     "dimout": 1
+  },
+  "TargetBasedAggregation": {
+    "aggregator": "TargetBasedAggregation",
+    "distance_metric": "laplace_kernel"
   }
+
 }
