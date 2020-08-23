@@ -1,6 +1,6 @@
 ## Conditional Neural Processes
 
-This repository implements Conditional Neural Processes by Garnelo et al. 2018.
+This repository implements Conditional Neural Processes by Garnelo et al. 2018 as well as some architecture modifications to explore potential performance improvements 
 
 ### Getting Started in Google Colab
 1. In order to get started simply clone this repository.
